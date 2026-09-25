@@ -632,51 +632,231 @@
       ctx.beginPath(); ctx.moveTo(left, ny); ctx.lineTo(right, ny); ctx.stroke();
     }
 
-    // Cute Goalie Bear 🐻🧤
+    // Cute Human Goalkeeper Kid 👦🧤
     if (t.keeper) {
       var kOff = keeperOffsetX();
       var kx = gx + kOff;
       var ky = goalY + 12;
-
-      ctx.save();
-      ctx.translate(kx, ky);
-
-      // Goalie Body
-      ctx.fillStyle = "#ffaa00";
-      ctx.beginPath(); ctx.ellipse(0, 4, 14, 18, 0, 0, Math.PI * 2); ctx.fill();
-
-      // Goalie Jersey #1
-      ctx.fillStyle = "#ff4d4f";
-      ctx.beginPath(); ctx.ellipse(0, 4, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "700 11px Fredoka, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("1", 0, 8);
-
-      // Cute Bear Head
-      ctx.fillStyle = "#d48806";
-      ctx.beginPath(); ctx.arc(0, -14, 12, 0, Math.PI * 2); ctx.fill();
-
-      // Ears
-      ctx.beginPath(); ctx.arc(-11, -22, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(11, -22, 5, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#ffadd2";
-      ctx.beginPath(); ctx.arc(-11, -22, 2.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(11, -22, 2.5, 0, Math.PI * 2); ctx.fill();
-
-      // Muzzle & Nose
-      ctx.fillStyle = "#fff1b8";
-      ctx.beginPath(); ctx.ellipse(0, -10, 6, 4.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#3a1d00";
-      ctx.beginPath(); ctx.arc(0, -12, 2.2, 0, Math.PI * 2); ctx.fill();
-
-      // Goalie Gloves 🧤
-      ctx.fillStyle = "#52c41a";
-      ctx.beginPath(); ctx.arc(-18, 0, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(18, 0, 6, 0, Math.PI * 2); ctx.fill();
-
-      ctx.restore();
+      drawHumanKeeper(kx, ky);
     }
+
+    ctx.restore();
+  }
+
+  function drawHumanKeeper(kx, ky) {
+    ctx.save();
+    ctx.translate(kx, ky);
+
+    // Body Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    ctx.beginPath(); ctx.ellipse(0, 18, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Goalie Legs & Cleats
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-8, 10, 5, 10);
+    ctx.fillRect(3, 10, 5, 10);
+    ctx.fillStyle = "#ff4d4f";
+    ctx.fillRect(-9, 17, 7, 4);
+    ctx.fillRect(2, 17, 7, 4);
+
+    // Goalie Shorts
+    ctx.fillStyle = "#1d39c4";
+    ctx.fillRect(-10, 4, 20, 8);
+
+    // Goalie Jersey #1
+    ctx.fillStyle = "#ff7a45";
+    ctx.beginPath(); ctx.ellipse(0, 0, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 10px Fredoka, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("1", 0, 4);
+
+    // Arms & Gloves
+    var armWave = Math.sin(tclock * 6) * 3;
+    ctx.fillStyle = "#ff7a45";
+    ctx.fillRect(-16, -6, 5, 10);
+    ctx.fillRect(11, -6, 5, 10);
+
+    // Green Goalie Gloves 🧤
+    ctx.fillStyle = "#52c41a";
+    ctx.beginPath(); ctx.arc(-15, 6 + armWave, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, 6 - armWave, 6, 0, Math.PI * 2); ctx.fill();
+
+    // Human Head & Skin
+    ctx.fillStyle = "#ffe0c2";
+    ctx.beginPath(); ctx.arc(0, -15, 11, 0, Math.PI * 2); ctx.fill();
+
+    // Sporty Hair & Headband
+    ctx.fillStyle = "#593816"; // Brown Hair
+    ctx.beginPath(); ctx.arc(0, -18, 11.5, Math.PI, 0); ctx.fill();
+    ctx.fillRect(-11, -21, 22, 6);
+
+    // Blue Headband
+    ctx.fillStyle = "#4096ff";
+    ctx.fillRect(-11, -19, 22, 3.5);
+
+    // Face & Expressions
+    var wasSaved = ball.state === BALL_RESULT && resultText.indexOf("SAVED") >= 0;
+    var wasScored = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
+
+    if (wasScored) {
+      // Surprised / Dizzy Eyes when Goal is scored
+      ctx.strokeStyle = "#ff4d4f";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-6, -16); ctx.lineTo(-2, -12);
+      ctx.moveTo(-2, -16); ctx.lineTo(-6, -12);
+      ctx.moveTo(2, -16); ctx.lineTo(6, -12);
+      ctx.moveTo(6, -16); ctx.lineTo(2, -12);
+      ctx.stroke();
+
+      ctx.fillStyle = "#ff4d4f";
+      ctx.beginPath(); ctx.arc(0, -9, 2.5, 0, Math.PI * 2); ctx.fill(); // Open mouth
+    } else {
+      // Cheerful Eyes
+      ctx.fillStyle = "#262626";
+      ctx.beginPath(); ctx.arc(-4, -14, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 2, 0, Math.PI * 2); ctx.fill();
+
+      // Eye Highlights
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-4.8, -14.8, 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(3.2, -14.8, 0.8, 0, Math.PI * 2); ctx.fill();
+
+      // Smile
+      ctx.strokeStyle = "#8c4d15";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, -10, 3.5, 0.1, Math.PI - 0.1);
+      ctx.stroke();
+    }
+
+    // Rosy Cheeks
+    ctx.fillStyle = "rgba(255, 120, 117, 0.55)";
+    ctx.beginPath(); ctx.arc(-7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawHumanKicker() {
+    ctx.save();
+
+    // Position kicker behind/beside penalty spot
+    var kx = ballStartX - 26;
+    var ky = ballStartY + 8;
+    var kickSwing = 0;
+
+    if (ball.state === BALL_FLIGHT) {
+      // Follow through pose during shot flight
+      kickSwing = Math.min(1, (performance.now() - (swipeStart ? swipeStart.t : 0)) / 200);
+      kx = ballStartX - 18 + kickSwing * 12;
+      ky = ballStartY + 4 - kickSwing * 6;
+    } else if (ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0)) {
+      // Cheering stance after Goal
+      kx = ballStartX - 16;
+      ky = ballStartY + 2;
+    }
+
+    ctx.translate(kx, ky);
+
+    // Kicker Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(0, 16, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Kicking Leg & Standing Leg
+    ctx.strokeStyle = "#ffd8b8";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+
+    if (ball.state === BALL_FLIGHT) {
+      // Dynamic kicking leg forward stroke
+      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-8, 16); ctx.stroke(); // Standing leg
+      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(14, 10); ctx.stroke(); // Kicking leg forward!
+
+      // Cleats
+      ctx.fillStyle = "#141414";
+      ctx.fillRect(-12, 14, 7, 4);
+      ctx.fillRect(12, 8, 7, 4);
+    } else {
+      // Ready stance legs
+      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-6, 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(6, 16); ctx.stroke();
+
+      // Cleats
+      ctx.fillStyle = "#141414";
+      ctx.fillRect(-10, 14, 7, 4);
+      ctx.fillRect(2, 14, 7, 4);
+    }
+
+    // Striker Shorts
+    ctx.fillStyle = "#ff4d4f";
+    ctx.fillRect(-9, 0, 18, 8);
+
+    // Striker Blue Jersey #10
+    ctx.fillStyle = "#4096ff";
+    ctx.beginPath(); ctx.ellipse(0, -6, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 9px Fredoka, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("10", 0, -3);
+
+    // Cheering or Ready Arms
+    ctx.fillStyle = "#4096ff";
+    var isCheering = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
+    if (isCheering) {
+      // Arms raised high 🎉
+      ctx.fillRect(-14, -18, 4, 10);
+      ctx.fillRect(10, -18, 4, 10);
+      ctx.fillStyle = "#ffd8b8";
+      ctx.beginPath(); ctx.arc(-12, -19, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(12, -19, 3, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillRect(-15, -10, 4, 9);
+      ctx.fillRect(11, -10, 4, 9);
+      ctx.fillStyle = "#ffd8b8";
+      ctx.beginPath(); ctx.arc(-13, -1, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(13, -1, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Kicker Human Head & Skin
+    ctx.fillStyle = "#ffd8b8";
+    ctx.beginPath(); ctx.arc(0, -20, 10, 0, Math.PI * 2); ctx.fill();
+
+    // Spiky Blonde Hair
+    ctx.fillStyle = "#ffc53d";
+    ctx.beginPath();
+    ctx.arc(0, -22, 10.5, Math.PI, 0);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-10, -24); ctx.lineTo(-5, -29); ctx.lineTo(0, -24); ctx.lineTo(5, -29); ctx.lineTo(10, -24);
+    ctx.fill();
+
+    // Red Sweatband
+    ctx.fillStyle = "#ff4d4f";
+    ctx.fillRect(-10, -24, 20, 3);
+
+    // Face Details
+    ctx.fillStyle = "#262626";
+    ctx.beginPath(); ctx.arc(-3.5, -19, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(3.5, -19, 1.8, 0, Math.PI * 2); ctx.fill();
+
+    // Eye Sparkle
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(-4.2, -19.6, 0.7, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(2.7, -19.6, 0.7, 0, Math.PI * 2); ctx.fill();
+
+    // Smile / Winking grin
+    ctx.strokeStyle = "#a05010";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, -16, 3, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+
+    // Rosy Cheeks
+    ctx.fillStyle = "rgba(255, 120, 117, 0.6)";
+    ctx.beginPath(); ctx.arc(-6, -17, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, -17, 2.2, 0, Math.PI * 2); ctx.fill();
 
     ctx.restore();
   }
@@ -750,6 +930,7 @@
     ctx.beginPath(); ctx.arc(W / 2, ballStartY, 50, Math.PI, 0); ctx.stroke();
 
     drawGoal();
+    drawHumanKicker();
     drawBall();
 
     // Render particles
