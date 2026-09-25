@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#278003">
+  <title>Goal Kick! - Child Friendly Soccer Arcade</title>
+
+  <!-- SEO & Meta -->
+  <meta name="description" content="A super fun, child-friendly Goal Kick soccer arcade game! Swipe up on the ball to score goals against cute goalies in full screen!">
+  <meta name="keywords" content="goal kick, soccer game, kids game, html5 game, mobile arcade">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Fullscreen Canvas Playfield -->
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD Top Navigation Bar -->
+  <div id="hud" class="hud-container hidden">
+    <div class="hud-item score-box">
+      <span class="hud-label">SCORE</span>
+      <span id="scoreText" class="hud-value">0</span>
+    </div>
+
+    <div class="hud-item level-box">
+      <span class="hud-label" id="tierNameText">PRACTICE</span>
+      <span id="streakText" class="hud-subvalue">Streak 0</span>
+    </div>
+
+    <div class="hud-item status-box">
+      <div class="lives-box" id="livesContainer">
+        <!-- Dynamic Hearts rendered here -->
+      </div>
+      <div class="best-box">
+        <span class="best-label">BEST:</span>
+        <span id="bestHudText" class="best-value">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Screen Overlay -->
+  <div class="overlay-layer" id="titleScreen">
+    <div class="game-card bounce-in">
+      <div class="card-badge">SUPER CUTE & FUN</div>
+      <h1 class="game-title">Goal Kick! ⚽✨</h1>
+      <p class="game-subtitle">Swipe up on the ball to strike! Swipe direction aims your shot, swipe speed gives power. Beat cute goalies and build up your streak!</p>
+
+      <div class="character-preview">
+        <div class="preview-item">
+          <div class="char-avatar ball-bg">⚽</div>
+          <span class="char-label">Goal +1</span>
+        </div>
+        <div class="preview-item">
+          <div class="char-avatar fire-bg">🚀</div>
+          <span class="char-label">Screamer +3</span>
+        </div>
+        <div class="preview-item">
+          <div class="char-avatar bear-bg">🐻🧤</div>
+          <span class="char-label">Cute Goalie</span>
+        </div>
+      </div>
+
+      <div class="rules-summary">
+        <div class="rule-chip">👆 Swipe up to shoot</div>
+        <div class="rule-chip">🎯 Aim away from Goalie</div>
+        <div class="rule-chip">❤️ Don't miss 3 times</div>
+      </div>
+
+      <button class="play-btn" id="startBtn">
+        <span>START KICKING! 🚀</span>
+      </button>
+
+      <div class="desktop-hint">
+        <span>💡 Desktop: Drag mouse up to kick! Keyboard: <kbd>SPACE</kbd> or <kbd>ENTER</kbd> to start, <kbd>P</kbd> or <kbd>ESC</kbd> to pause</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Overlay -->
+  <div class="overlay-layer hidden" id="gameOverScreen">
+    <div class="game-card pop-in" id="overCard">
+      <div class="card-badge orange-badge">FULL TIME</div>
+      <h2 class="over-title" id="overTitle">Great Kick! 🎉</h2>
+      <p class="over-reason" id="overReasonText">Out of chances!</p>
+
+      <div class="score-display">
+        <span class="score-label">FINAL SCORE</span>
+        <span class="final-score" id="finalScoreText">0</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-pill">
+          <span class="stat-icon">⚽</span>
+          <span id="goalsText">0 Goals</span>
+        </div>
+        <div class="stat-pill">
+          <span class="stat-icon">🔥</span>
+          <span id="bestStreakText">Best Streak 0</span>
+        </div>
+      </div>
+
+      <div class="best-score-banner" id="bestBanner">
+        🏆 Best Score: <span id="bestScoreText">0</span>
+      </div>
+
+      <button class="play-btn again-btn" id="againBtn">
+        <span>KICK AGAIN 🔄</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div class="overlay-layer hidden" id="pauseScreen">
+    <div class="game-card pop-in">
+      <div class="card-badge blue-badge">PAUSED</div>
+      <h2 class="game-title">Game Paused ⏸️</h2>
+      <p class="game-subtitle">Taking a quick water break? The goalie is waiting!</p>
+
+      <button class="play-btn" id="resumeBtn">
+        <span>RESUME GAME ▶️</span>
+      </button>
+
+      <div class="desktop-hint">
+        <span>💡 Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Game Engine Script -->
+  <script src="script.js"></script>
+</body>
+</html>
