@@ -619,6 +619,100 @@
     }
   }
 
+  function drawPlaygroundBushesAndTrees() {
+    ctx.save();
+
+    // 1. Far Left Playground Tree
+    ctx.fillStyle = "#5d4037"; // Tree Trunk
+    ctx.fillRect(8, goalY - 85, 14, 55);
+    // Tree Leaves (puffy green circles)
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(15, goalY - 95, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#43a047";
+    ctx.beginPath(); ctx.arc(10, goalY - 100, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.arc(22, goalY - 105, 16, 0, Math.PI * 2); ctx.fill();
+
+    // 2. Far Right Playground Tree
+    ctx.fillStyle = "#5d4037"; // Tree Trunk
+    ctx.fillRect(W - 22, goalY - 85, 14, 55);
+    // Tree Leaves
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(W - 15, goalY - 95, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#43a047";
+    ctx.beginPath(); ctx.arc(W - 10, goalY - 100, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.arc(W - 22, goalY - 105, 16, 0, Math.PI * 2); ctx.fill();
+
+    // 3. Continuous Lush Green Bushes Hedge behind goal line (Matches image bushes!)
+    var bushY = goalY - 26;
+    var bushColors = ["#1b5e20", "#2e7d32", "#388e3c", "#4caf50"];
+    
+    // Bottom Layer Bushes (Dark Green)
+    for (var b1 = -10; b1 < W + 20; b1 += 32) {
+      ctx.fillStyle = bushColors[0];
+      ctx.beginPath(); ctx.arc(b1, bushY, 26, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Mid Layer Bushes (Medium Green)
+    for (var b2 = 5; b2 < W + 20; b2 += 28) {
+      ctx.fillStyle = bushColors[1];
+      ctx.beginPath(); ctx.arc(b2, bushY - 5, 22, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Top Layer Bushes (Bright Green)
+    for (var b3 = 18; b3 < W; b3 += 35) {
+      ctx.fillStyle = bushColors[2];
+      ctx.beginPath(); ctx.arc(b3, bushY - 10, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = bushColors[3];
+      ctx.beginPath(); ctx.arc(b3 - 4, bushY - 14, 12, 0, Math.PI * 2); ctx.fill();
+
+      // Flower blossoms 🌼 on playground bushes
+      if (b3 % 3 === 0) {
+        ctx.fillStyle = "#ffeb3b";
+        ctx.beginPath(); ctx.arc(b3, bushY - 18, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(b3 - 3, bushY - 18, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(b3 + 3, bushY - 18, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(b3, bushY - 21, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawForegroundPlaygroundGrass() {
+    ctx.save();
+    
+    // Bottom Left Corner Bush & Grass Blades
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(-10, H + 10, 50, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#4caf50";
+    ctx.beginPath(); ctx.arc(-5, H + 5, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#81c784";
+    ctx.beginPath(); ctx.arc(-2, H, 26, 0, Math.PI * 2); ctx.fill();
+
+    // Grass blades pointing up on bottom left
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.moveTo(10, H); ctx.lineTo(16, H - 25); ctx.lineTo(24, H); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(22, H); ctx.lineTo(30, H - 32); ctx.lineTo(38, H); ctx.fill();
+
+    // Bottom Right Corner Bush & Grass Blades
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(W + 10, H + 10, 50, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#4caf50";
+    ctx.beginPath(); ctx.arc(W + 5, H + 5, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#81c784";
+    ctx.beginPath(); ctx.arc(W + 2, H, 26, 0, Math.PI * 2); ctx.fill();
+
+    // Grass blades pointing up on bottom right
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.moveTo(W - 38, H); ctx.lineTo(W - 30, H - 32); ctx.lineTo(W - 22, H); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W - 24, H); ctx.lineTo(W - 16, H - 25); ctx.lineTo(W - 10, H); ctx.fill();
+
+    ctx.restore();
+  }
+
   function drawStadiumBackground() {
     // 1. Sky Gradient (Sunny Sky behind goal)
     var skyGrad = ctx.createLinearGradient(0, 0, 0, goalY);
@@ -655,7 +749,10 @@
       ctx.beginPath(); ctx.arc(c, goalY - 45, 3.5, 0, Math.PI * 2); ctx.fill();
     }
 
-    // 5. Pitch Field & Grass Stripes
+    // 5. Lush Playground Bushes & Trees Layer
+    drawPlaygroundBushesAndTrees();
+
+    // 6. Pitch Field & Grass Stripes
     var pitchGrad = ctx.createLinearGradient(0, goalY, 0, H);
     pitchGrad.addColorStop(0, "#43a047");
     pitchGrad.addColorStop(0.5, "#2e7d32");
@@ -668,7 +765,7 @@
       if (i % 2 === 0) ctx.fillRect(0, goalY + i * ((H - goalY) / 7), W, (H - goalY) / 7);
     }
 
-    // 6. White Penalty Box Lines & Arc
+    // 7. White Penalty Box Lines & Arc
     ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
     ctx.lineWidth = 3;
     ctx.strokeRect(W * 0.12, goalY - 28, W * 0.76, H * 0.54);
@@ -678,6 +775,7 @@
     ctx.fillStyle = "#ffffff";
     ctx.beginPath(); ctx.arc(W / 2, ballStartY, 4, 0, Math.PI * 2); ctx.fill();
   }
+
 
   function drawGoal() {
     var t = TIERS[tier];
@@ -1143,8 +1241,11 @@
       }
     }
 
+    drawForegroundPlaygroundGrass();
+
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+
 
 
   /* --------------------------------------------------------------------------
