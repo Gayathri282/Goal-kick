@@ -84,9 +84,9 @@
     }
 
     ballStartX = W / 2;
-    ballStartY = H * 0.80;
-    goalY = H * 0.15;
-    goalBandBottom = H * 0.19;
+    ballStartY = H * 0.82;
+    goalY = H * 0.25;
+    goalBandBottom = H * 0.29;
   }
 
   window.addEventListener("resize", resize);
@@ -466,7 +466,9 @@
 
     shake = Math.max(shake, 0.4);
     burstParticles(ball.x, ball.y, 30, "#52c41a", 32, 4.0);
-    popups.push({ x: ball.x, y: ball.y - 24, life: 1.2, text: "+" + pts, color: "#52c41a" });
+
+    // CRITICAL REQUIREMENT: Notifications regarding points MUST be displayed strictly ABOVE the goal post!
+    popups.push({ x: W / 2, y: goalY - 48, life: 1.2, text: "+" + pts + " PTS!", color: "#ffeb3b" });
 
     if (streak > 0 && streak % 5 === 0) {
       sfx.streak();
@@ -477,7 +479,7 @@
       tier = newTier;
       tierFlash = 1.4;
       sfx.levelup();
-      popups.push({ x: W / 2, y: H * 0.38, life: 1.5, text: TIERS[tier].name, color: "#ffc53d" });
+      popups.push({ x: W / 2, y: goalY - 72, life: 1.5, text: TIERS[tier].name, color: "#73d13d" });
     }
 
     updateHUDUI();
@@ -507,7 +509,7 @@
 
     if (ball.state === BALL_FLIGHT) {
       trail.push({ x: ball.x, y: ball.y, life: 1 });
-      if (trail.length > 14) trail.shift();
+      if (trail.length > 16) trail.shift();
 
       var prevY = ball.y;
       ball.vy += GRAVITY * dt;
@@ -560,9 +562,9 @@
       if (pt.life <= 0) particles.splice(p, 1);
     }
 
-    // Update popups
+    // Update popups (float UPWARDS strictly above goal post)
     for (var u = popups.length - 1; u >= 0; u--) {
-      popups[u].y -= 0.8 * dt * 60;
+      popups[u].y -= 0.9 * dt * 60;
       popups[u].life -= 0.022 * dt * 60;
       if (popups[u].life <= 0) popups.splice(u, 1);
     }
@@ -596,8 +598,87 @@
   }
 
   /* --------------------------------------------------------------------------
-     8. Child-Friendly Canvas Stadium Renderer
+     8. Child-Friendly Canvas Stadium Renderer (Matching Image)
      -------------------------------------------------------------------------- */
+
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+  }
+
+  function drawStadiumBackground() {
+    // 1. Sky Gradient (Sunny Sky behind goal)
+    var skyGrad = ctx.createLinearGradient(0, 0, 0, goalY);
+    skyGrad.addColorStop(0, "#1e90ff");
+    skyGrad.addColorStop(0.6, "#70e0ff");
+    skyGrad.addColorStop(1, "#b3f0ff");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, goalY);
+
+    // 2. Fluffy White Sky Clouds
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.beginPath(); ctx.arc(40, 30, 22, 0, Math.PI * 2); ctx.arc(65, 25, 28, 0, Math.PI * 2); ctx.arc(90, 32, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 80, 35, 20, 0, Math.PI * 2); ctx.arc(W - 55, 28, 25, 0, Math.PI * 2); ctx.arc(W - 30, 36, 18, 0, Math.PI * 2); ctx.fill();
+
+    // 3. Stadium Floodlight Towers (Matches Image)
+    ctx.fillStyle = "#a6b9d0";
+    ctx.fillRect(18, 12, 6, 65);
+    ctx.fillRect(W - 24, 12, 6, 65);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(21, 12, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 21, 12, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffeb3b";
+    ctx.beginPath(); ctx.arc(21, 12, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 21, 12, 6, 0, Math.PI * 2); ctx.fill();
+
+    // 4. Stadium Stand & Spectator Crowd Wall
+    ctx.fillStyle = "#2c3e50";
+    ctx.fillRect(0, goalY - 55, W, 25);
+    
+    // Colorful spectator crowd dots & flags
+    var crowdColors = ["#ff4d4f", "#4096ff", "#ffc53d", "#73d13d", "#ff85c0", "#9254de"];
+    for (var c = 10; c < W; c += 14) {
+      ctx.fillStyle = crowdColors[(c / 14 | 0) % crowdColors.length];
+      ctx.beginPath(); ctx.arc(c, goalY - 45, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // 5. Pitch Field & Grass Stripes
+    var pitchGrad = ctx.createLinearGradient(0, goalY, 0, H);
+    pitchGrad.addColorStop(0, "#43a047");
+    pitchGrad.addColorStop(0.5, "#2e7d32");
+    pitchGrad.addColorStop(1, "#1b5e20");
+    ctx.fillStyle = pitchGrad;
+    ctx.fillRect(0, goalY, W, H - goalY);
+
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    for (var i = 0; i < 7; i++) {
+      if (i % 2 === 0) ctx.fillRect(0, goalY + i * ((H - goalY) / 7), W, (H - goalY) / 7);
+    }
+
+    // 6. White Penalty Box Lines & Arc
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W * 0.12, goalY - 28, W * 0.76, H * 0.54);
+    ctx.beginPath(); ctx.arc(W / 2, ballStartY, 52, Math.PI, 0); ctx.stroke();
+    
+    // Penalty Spot Dot
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W / 2, ballStartY, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
   function drawGoal() {
     var t = TIERS[tier];
     var gx = goalCenterX();
@@ -607,36 +688,55 @@
     ctx.save();
 
     // Goal Post Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.fillRect(left - 4, goalBandBottom + 2, (right - left) + 8, 6);
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath();
+    drawRoundRect(ctx, left - 4, goalBandBottom + 2, (right - left) + 8, 6, 3);
+    ctx.fill();
 
-    // Goal Posts & Crossbar
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 7;
+    // Metallic Goal Posts & Top Crossbar (Crossbar top at goalY - 32)
+    ctx.strokeStyle = "#e8ecef";
+    ctx.lineWidth = 8;
     ctx.lineCap = "round";
-    ctx.beginPath(); ctx.moveTo(left, goalY - 26); ctx.lineTo(left, goalBandBottom + 6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(right, goalY - 26); ctx.lineTo(right, goalBandBottom + 6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(left, goalY - 26); ctx.lineTo(right, goalY - 26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, goalY - 32); ctx.lineTo(left, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(right, goalY - 32); ctx.lineTo(right, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, goalY - 32); ctx.lineTo(right, goalY - 32); ctx.stroke();
 
-    // Goal Net Grid
-    ctx.strokeStyle = "rgba(255,255,255,0.32)";
+    // Inner Post Highlight
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(left - 1, goalY - 32); ctx.lineTo(left - 1, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(right + 1, goalY - 32); ctx.lineTo(right + 1, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, goalY - 33); ctx.lineTo(right, goalY - 33); ctx.stroke();
+
+    // Rainbow Accent Bar on top of Crossbar (Matches Image)
+    var barY = goalY - 39;
+    var barH = 5;
+    var rColors = ["#ff4d4f", "#ff9c6e", "#ffec3d", "#73d13d", "#4096ff", "#9254de"];
+    var segW = (right - left) / rColors.length;
+    for (var c = 0; c < rColors.length; c++) {
+      ctx.fillStyle = rColors[c];
+      ctx.fillRect(left + c * segW, barY, segW, barH);
+    }
+
+    // White Net Grid Pattern
+    ctx.strokeStyle = "rgba(255,255,255,0.38)";
     ctx.lineWidth = 1.5;
-    var cols = Math.max(4, Math.round((right - left) / 14));
+    var cols = Math.max(5, Math.round((right - left) / 14));
     for (var i = 1; i < cols; i++) {
       var nx = left + (right - left) * i / cols;
-      ctx.beginPath(); ctx.moveTo(nx, goalY - 26); ctx.lineTo(nx, goalBandBottom + 6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(nx, goalY - 32); ctx.lineTo(nx, goalBandBottom + 6); ctx.stroke();
     }
-    var rows = 4;
+    var rows = 5;
     for (var j = 1; j < rows; j++) {
-      var ny = (goalY - 26) + ((goalBandBottom + 6) - (goalY - 26)) * j / rows;
+      var ny = (goalY - 32) + ((goalBandBottom + 6) - (goalY - 32)) * j / rows;
       ctx.beginPath(); ctx.moveTo(left, ny); ctx.lineTo(right, ny); ctx.stroke();
     }
 
-    // Cute Human Goalkeeper Kid 👦🧤
+    // Goalkeeper Kid inside Goal 👦🧤 (Matches Image Right Character)
     if (t.keeper) {
       var kOff = keeperOffsetX();
       var kx = gx + kOff;
-      var ky = goalY + 12;
+      var ky = goalY + 8;
       drawHumanKeeper(kx, ky);
     }
 
@@ -647,78 +747,88 @@
     ctx.save();
     ctx.translate(kx, ky);
 
-    // Body Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.2)";
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath(); ctx.ellipse(0, 18, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
 
     // Goalie Legs & Cleats
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(-8, 10, 5, 10);
     ctx.fillRect(3, 10, 5, 10);
-    ctx.fillStyle = "#ff4d4f";
+    ctx.fillStyle = "#2e7d32";
     ctx.fillRect(-9, 17, 7, 4);
     ctx.fillRect(2, 17, 7, 4);
 
     // Goalie Shorts
-    ctx.fillStyle = "#1d39c4";
+    ctx.fillStyle = "#1b5e20";
     ctx.fillRect(-10, 4, 20, 8);
 
-    // Goalie Jersey #1
-    ctx.fillStyle = "#ff7a45";
-    ctx.beginPath(); ctx.ellipse(0, 0, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "700 10px Fredoka, sans-serif";
+    // Goalie Green Jersey #1 (Matches Image Right Goalie)
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.ellipse(0, 0, 13, 14, 0, 0, Math.PI * 2); ctx.fill();
+    
+    // Barcelona style chest crest badge
+    ctx.fillStyle = "#ffeb3b";
+    ctx.beginPath(); ctx.arc(0, -2, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#2e7d32";
+    ctx.font = "700 8px Fredoka, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("1", 0, 4);
+    ctx.fillText("1", 0, 1);
 
     var wasSaved = ball.state === BALL_RESULT && resultText.indexOf("SAVED") >= 0;
     var wasScored = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
 
-    // Goalie Arms & Gloves
-    ctx.fillStyle = "#ff7a45";
+    // Goalie Arms & Patterned Gloves (Matches Image)
     if (wasSaved) {
-      // Cheerful Goalie Save pose (Arms raised high!) 🧤🎉
+      // Cheerful Goalie Save pose (Hands up high!) 🧤🎉
+      ctx.fillStyle = "#2e7d32";
       ctx.fillRect(-16, -14, 5, 12);
       ctx.fillRect(11, -14, 5, 12);
-      ctx.fillStyle = "#52c41a";
-      ctx.beginPath(); ctx.arc(-13, -15, 6.5, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(13, -15, 6.5, 0, Math.PI * 2); ctx.fill();
+
+      // Patterned Gloves (Green with Orange & Yellow Grip Pads)
+      ctx.fillStyle = "#73d13d";
+      ctx.beginPath(); ctx.arc(-14, -16, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -16, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ff7a45";
+      ctx.beginPath(); ctx.arc(-14, -16, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -16, 3.5, 0, Math.PI * 2); ctx.fill();
     } else {
       var armWave = Math.sin(tclock * 6) * 3;
+      ctx.fillStyle = "#2e7d32";
       ctx.fillRect(-16, -6, 5, 10);
       ctx.fillRect(11, -6, 5, 10);
-      ctx.fillStyle = "#52c41a";
-      ctx.beginPath(); ctx.arc(-15, 6 + armWave, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(15, 6 - armWave, 6, 0, Math.PI * 2); ctx.fill();
+
+      // Patterned Gloves
+      ctx.fillStyle = "#73d13d";
+      ctx.beginPath(); ctx.arc(-15, 6 + armWave, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(15, 6 - armWave, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ffc53d";
+      ctx.beginPath(); ctx.arc(-15, 6 + armWave, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(15, 6 - armWave, 3, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Human Head & Skin
+    // Goalie Head & Skin
     ctx.fillStyle = "#ffe0c2";
     ctx.beginPath(); ctx.arc(0, -15, 11, 0, Math.PI * 2); ctx.fill();
 
-    // Sporty Hair & Headband
-    ctx.fillStyle = "#593816"; // Brown Hair
+    // Brown Hair
+    ctx.fillStyle = "#4a2c11";
     ctx.beginPath(); ctx.arc(0, -18, 11.5, Math.PI, 0); ctx.fill();
     ctx.fillRect(-11, -21, 22, 6);
 
-    // Blue Headband
-    ctx.fillStyle = "#4096ff";
-    ctx.fillRect(-11, -19, 22, 3.5);
-
     // Goalie Face Expressions
     if (wasScored) {
-      // Surprised / Dizzy Eyes when Goal is conceded
-      ctx.strokeStyle = "#ff4d4f";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-6, -16); ctx.lineTo(-2, -12);
-      ctx.moveTo(-2, -16); ctx.lineTo(-6, -12);
-      ctx.moveTo(2, -16); ctx.lineTo(6, -12);
-      ctx.moveTo(6, -16); ctx.lineTo(2, -12);
-      ctx.stroke();
+      // Surprised / Dizzy Eyes when Goal is conceded (Matches image goalie expression!)
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-4, -14, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#111111";
+      ctx.beginPath(); ctx.arc(-4, -14, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 1.2, 0, Math.PI * 2); ctx.fill();
 
-      ctx.fillStyle = "#ff4d4f";
-      ctx.beginPath(); ctx.arc(0, -9, 2.5, 0, Math.PI * 2); ctx.fill();
+      // Wide open surprised mouth! 😮
+      ctx.fillStyle = "#262626";
+      ctx.beginPath(); ctx.arc(0, -8, 3.5, 0, Math.PI * 2); ctx.fill();
     } else if (wasSaved) {
       // Big Cheerful Save Smile!
       ctx.fillStyle = "#262626";
@@ -748,7 +858,7 @@
     }
 
     // Rosy Cheeks
-    ctx.fillStyle = "rgba(255, 120, 117, 0.55)";
+    ctx.fillStyle = "rgba(255, 120, 117, 0.6)";
     ctx.beginPath(); ctx.arc(-7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
 
@@ -761,90 +871,81 @@
     var isGoalScored = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
     var isGoalLost = ball.state === BALL_RESULT && !isGoalScored;
 
-    // Position kicker behind/beside penalty spot
-    var kx = ballStartX - 26;
+    // Position kicker behind/beside penalty spot (Left Kid Striker matching image)
+    var kx = ballStartX - 28;
     var ky = ballStartY + 8;
     var kickSwing = 0;
 
     if (ball.state === BALL_FLIGHT) {
       // Follow through pose during shot flight
       kickSwing = Math.min(1, (performance.now() - (swipeStart ? swipeStart.t : 0)) / 200);
-      kx = ballStartX - 18 + kickSwing * 12;
+      kx = ballStartX - 18 + kickSwing * 14;
       ky = ballStartY + 4 - kickSwing * 6;
     } else if (isGoalScored) {
       // Cheering stance after Goal
-      kx = ballStartX - 16;
+      kx = ballStartX - 18;
       ky = ballStartY + 2;
     } else if (isGoalLost) {
-      // Sad slumped stance after Goal Lost
-      kx = ballStartX - 22;
+      // Sad stance
+      kx = ballStartX - 24;
       ky = ballStartY + 10;
     }
 
     ctx.translate(kx, ky);
 
     // Kicker Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillStyle = "rgba(0,0,0,0.24)";
     ctx.beginPath(); ctx.ellipse(0, 16, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
 
     // Kicking Leg & Standing Leg
     ctx.strokeStyle = "#ffd8b8";
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 4.5;
     ctx.lineCap = "round";
 
     if (ball.state === BALL_FLIGHT) {
-      // Dynamic kicking leg forward stroke
-      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-8, 16); ctx.stroke(); // Standing leg
-      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(14, 10); ctx.stroke(); // Kicking leg forward!
+      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-8, 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(14, 10); ctx.stroke();
 
-      ctx.fillStyle = "#141414";
+      ctx.fillStyle = "#1a1a1a";
       ctx.fillRect(-12, 14, 7, 4);
       ctx.fillRect(12, 8, 7, 4);
-    } else if (isGoalLost) {
-      // Sad slumped legs
-      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-5, 16); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(5, 16); ctx.stroke();
-      ctx.fillStyle = "#141414";
-      ctx.fillRect(-9, 14, 7, 4);
-      ctx.fillRect(1, 14, 7, 4);
     } else {
-      // Ready stance legs
       ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-6, 16); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(6, 16); ctx.stroke();
 
-      ctx.fillStyle = "#141414";
+      // Black Cleats
+      ctx.fillStyle = "#1a1a1a";
       ctx.fillRect(-10, 14, 7, 4);
       ctx.fillRect(2, 14, 7, 4);
     }
 
-    // Striker Shorts
-    ctx.fillStyle = "#ff4d4f";
-    ctx.fillRect(-9, 0, 18, 8);
+    // Red & Blue Striped FC Barcelona Jersey (Matches Left Kid in Image)
+    ctx.fillStyle = "#1565c0"; // Blue Jersey base
+    ctx.beginPath(); ctx.ellipse(0, -6, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
 
-    // Striker Blue Jersey #10
-    ctx.fillStyle = "#4096ff";
-    ctx.beginPath(); ctx.ellipse(0, -6, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "700 9px Fredoka, sans-serif";
+    // Red Vertical Stripes (#c62828)
+    ctx.fillStyle = "#c62828";
+    ctx.fillRect(-8, -18, 4, 24);
+    ctx.fillRect(4, -18, 4, 24);
+
+    // Yellow #7 on Chest
+    ctx.fillStyle = "#ffeb3b";
+    ctx.font = "900 10px Fredoka, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("10", 0, -3);
+    ctx.fillText("7", 0, -3);
+
+    // Blue Shorts
+    ctx.fillStyle = "#1565c0";
+    ctx.fillRect(-9, 1, 18, 7);
 
     // Arms Stance
-    ctx.fillStyle = "#4096ff";
+    ctx.fillStyle = "#c62828";
     if (isGoalScored) {
-      // Arms raised high 🎉 GOAL CHEER!
       ctx.fillRect(-14, -18, 4, 10);
       ctx.fillRect(10, -18, 4, 10);
       ctx.fillStyle = "#ffd8b8";
       ctx.beginPath(); ctx.arc(-12, -19, 3, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(12, -19, 3, 0, Math.PI * 2); ctx.fill();
-    } else if (isGoalLost) {
-      // Disappointed hands on head / face 🤦‍♂️
-      ctx.fillRect(-14, -16, 4, 10);
-      ctx.fillRect(10, -16, 4, 10);
-      ctx.fillStyle = "#ffd8b8";
-      ctx.beginPath(); ctx.arc(-10, -20, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(10, -20, 3, 0, Math.PI * 2); ctx.fill();
     } else {
       ctx.fillRect(-15, -10, 4, 9);
       ctx.fillRect(11, -10, 4, 9);
@@ -853,25 +954,20 @@
       ctx.beginPath(); ctx.arc(13, -1, 3, 0, Math.PI * 2); ctx.fill();
     }
 
-    // Head Position (Slightly slumped down if goal lost)
+    // Head Position
     var headY = isGoalLost ? -18 : -20;
     ctx.fillStyle = "#ffd8b8";
-    ctx.beginPath(); ctx.arc(0, headY, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, headY, 11, 0, Math.PI * 2); ctx.fill();
 
-    // Spiky Hair
-    ctx.fillStyle = "#ffc53d";
-    ctx.beginPath(); ctx.arc(0, headY - 2, 10.5, Math.PI, 0); ctx.fill();
+    // Messy Brown Anime Hair (Matches Image Striker Kid)
+    ctx.fillStyle = "#5d3a1a";
+    ctx.beginPath(); ctx.arc(0, headY - 2, 11.5, Math.PI, 0); ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(-10, headY - 4); ctx.lineTo(-5, headY - 9); ctx.lineTo(0, headY - 4); ctx.lineTo(5, headY - 9); ctx.lineTo(10, headY - 4);
+    ctx.moveTo(-11, headY - 4); ctx.lineTo(-6, headY - 10); ctx.lineTo(-1, headY - 5); ctx.lineTo(4, headY - 10); ctx.lineTo(10, headY - 4);
     ctx.fill();
 
-    // Red Sweatband
-    ctx.fillStyle = "#ff4d4f";
-    ctx.fillRect(-10, headY - 4, 20, 3);
-
-    // Kicker Face Expressions
+    // Kicker Face Expression
     if (isGoalLost) {
-      // Sad / Disappointed Closed Eyes (>_<)
       ctx.strokeStyle = "#3a1d00";
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -879,42 +975,32 @@
       ctx.moveTo(6, headY - 2); ctx.lineTo(2, headY); ctx.lineTo(6, headY + 2);
       ctx.stroke();
 
-      // Sad Frown Mouth ☹️
       ctx.strokeStyle = "#8c1515";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(0, headY + 7, 3.5, Math.PI + 0.2, Math.PI * 2 - 0.2);
       ctx.stroke();
-
-      // Animated Blue Teardrop 💧
-      var tearOffset = (tclock * 8) % 6;
-      ctx.fillStyle = "#4096ff";
-      ctx.beginPath();
-      ctx.arc(7, headY + 2 + tearOffset, 2, 0, Math.PI * 2);
-      ctx.fill();
     } else {
-      // Cheerful Eyes
+      // Big Cheerful Smile
       ctx.fillStyle = "#262626";
       ctx.beginPath(); ctx.arc(-3.5, headY + 1, 1.8, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(3.5, headY + 1, 1.8, 0, Math.PI * 2); ctx.fill();
 
-      // Eye Sparkle
       ctx.fillStyle = "#ffffff";
       ctx.beginPath(); ctx.arc(-4.2, headY + 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(2.7, headY + 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
 
-      // Smile
       ctx.strokeStyle = "#a05010";
-      ctx.lineWidth = 1.6;
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
-      ctx.arc(0, headY + 4, 3, 0.1, Math.PI - 0.1);
+      ctx.arc(0, headY + 4, 3.5, 0.1, Math.PI - 0.1);
       ctx.stroke();
     }
 
     // Rosy Cheeks
     ctx.fillStyle = "rgba(255, 120, 117, 0.6)";
-    ctx.beginPath(); ctx.arc(-6, headY + 3, 2.2, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(6, headY + 3, 2.2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(-6, headY + 3, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, headY + 3, 2.5, 0, Math.PI * 2); ctx.fill();
 
     ctx.restore();
   }
@@ -922,12 +1008,23 @@
   function drawBall() {
     if (ball.state === BALL_RESULT && resultTimer < 0.35) return;
 
-    // Tail motion trail
+    // Rainbow energy trail with stars (Matches Image)
+    var rainbowColors = ["#ff4d4f", "#ff9c6e", "#ffec3d", "#73d13d", "#4096ff", "#9254de"];
     for (var i = 0; i < trail.length; i++) {
       var tr = trail[i];
-      ctx.globalAlpha = Math.max(0, tr.life) * 0.4;
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(tr.x, tr.y, 7, 0, Math.PI * 2); ctx.fill();
+      var col = rainbowColors[i % rainbowColors.length];
+      ctx.globalAlpha = Math.max(0, tr.life) * 0.75;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(tr.x, tr.y, 8 * (i / trail.length) + 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Star sparkle on rainbow trail
+      if (i % 3 === 0) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px Fredoka, sans-serif";
+        ctx.fillText("⭐", tr.x + (Math.sin(i) * 6), tr.y + (Math.cos(i) * 6));
+      }
     }
     ctx.globalAlpha = 1;
 
@@ -936,22 +1033,22 @@
     ctx.rotate(tclock * 6);
 
     // Ball Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.22)";
-    ctx.beginPath(); ctx.ellipse(0, 12, 10, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,0,0.24)";
+    ctx.beginPath(); ctx.ellipse(0, 13, 11, 4.5, 0, 0, Math.PI * 2); ctx.fill();
 
     // Soccer Ball Gradient
     var g = ctx.createRadialGradient(-3, -3, 1, 0, 0, 12);
     g.addColorStop(0, "#ffffff");
     g.addColorStop(1, "#e6e6e6");
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
 
-    // Pentagons
+    // Black Pentagons
     ctx.fillStyle = "#1a1a1a";
-    ctx.beginPath(); ctx.arc(0, 0, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 3.8, 0, Math.PI * 2); ctx.fill();
     for (var k = 0; k < 5; k++) {
       var a = k * (Math.PI * 2 / 5);
-      ctx.beginPath(); ctx.arc(Math.cos(a) * 7.5, Math.sin(a) * 7.5, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(Math.cos(a) * 8, Math.sin(a) * 8, 2.4, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
   }
@@ -962,31 +1059,13 @@
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Fullscreen Stadium Field Gradient
-    var bgGrad = ctx.createLinearGradient(0, 0, 0, vh);
-    bgGrad.addColorStop(0, "#278003");
-    bgGrad.addColorStop(1, "#0f4023");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, vw, vh);
-
     ctx.setTransform(
       scale, 0, 0, scale,
       offX + (Math.random() - 0.5) * shake * 12 * scale,
       offY + (Math.random() - 0.5) * shake * 12 * scale
     );
 
-    // Grass Stripes
-    ctx.fillStyle = "rgba(255,255,255,0.06)";
-    for (var i = 0; i < 7; i++) {
-      if (i % 2 === 0) ctx.fillRect(0, H * 0.18 + i * (H * 0.75 / 7), W, H * 0.75 / 7);
-    }
-
-    // Penalty Box Lines
-    ctx.strokeStyle = "rgba(255,255,255,0.65)";
-    ctx.lineWidth = 2.8;
-    ctx.strokeRect(W * 0.10, goalY - 26, W * 0.80, H * 0.55);
-    ctx.beginPath(); ctx.arc(W / 2, ballStartY, 50, Math.PI, 0); ctx.stroke();
-
+    drawStadiumBackground();
     drawGoal();
     drawHumanKicker();
     drawBall();
@@ -1000,9 +1079,9 @@
     }
     ctx.globalAlpha = 1;
 
-    // Render floating popups
+    // Render floating popups (Strictly floating UPWARDS above goal post!)
     ctx.textAlign = "center";
-    ctx.font = "700 20px Fredoka, sans-serif";
+    ctx.font = "900 20px Fredoka, sans-serif";
     for (var u = 0; u < popups.length; u++) {
       ctx.globalAlpha = Math.max(0, popups[u].life);
       ctx.fillStyle = popups[u].color;
@@ -1010,35 +1089,63 @@
     }
     ctx.globalAlpha = 1;
 
+    /* --------------------------------------------------------------------------
+       CRITICAL NOTIFICATION REQUIREMENT:
+       All point notifications & game feedback MUST be displayed STRICTLY ABOVE
+       the goal post crossbar (goalY - 32) and NEVER overlay the goal post!
+       -------------------------------------------------------------------------- */
     if (state === STATE_PLAY) {
       if (ball.state === BALL_RESULT && resultTimer > 0) {
         var a = Math.min(1, resultTimer * 3);
+        var notifY = goalY - 55; // STRICTLY ABOVE GOAL CROSSBAR (goalY - 32)
+        
+        ctx.save();
         ctx.globalAlpha = a;
-        ctx.font = "700 36px Fredoka, sans-serif";
-        ctx.fillStyle = resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0 ? "#b7eb8f" : "#ffbb96";
-        ctx.fillText(resultText, W / 2, H * 0.46);
-        ctx.globalAlpha = 1;
+
+        // Stylish Arcade Notification Badge Pill
+        var badgeW = 210;
+        var badgeH = 42;
+        var isGoal = resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0;
+        
+        ctx.fillStyle = isGoal ? "rgba(16, 50, 24, 0.94)" : "rgba(60, 16, 16, 0.94)";
+        ctx.strokeStyle = isGoal ? "#ffeb3b" : "#ff7a45";
+        ctx.lineWidth = 3;
+
+        drawRoundRect(ctx, W / 2 - badgeW / 2, notifY - badgeH / 2, badgeW, badgeH, 21);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "900 22px Fredoka, sans-serif";
+        ctx.fillStyle = isGoal ? "#ffeb3b" : "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(resultText, W / 2, notifY);
+        ctx.restore();
       }
 
       if (tierFlash > 0) {
+        ctx.save();
         ctx.globalAlpha = Math.min(1, tierFlash * 2.0);
-        ctx.font = "700 26px Fredoka, sans-serif";
+        ctx.font = "900 24px Fredoka, sans-serif";
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(TIERS[tier].name, W / 2, H * 0.58);
-        ctx.globalAlpha = 1;
+        ctx.textAlign = "center";
+        ctx.fillText(TIERS[tier].name, W / 2, goalY - 75); // STRICTLY ABOVE GOAL POST
+        ctx.restore();
       }
 
       if (ball.state === BALL_READY) {
         ctx.globalAlpha = 0.75 + Math.sin(tclock * 3) * 0.15;
-        ctx.font = "500 14px Fredoka, sans-serif";
-        ctx.fillStyle = "#eafff0";
-        ctx.fillText("👆 swipe up to kick!", W / 2, ballStartY + 45);
+        ctx.font = "600 15px Fredoka, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText("👆 swipe up to kick!", W / 2, ballStartY + 46);
         ctx.globalAlpha = 1;
       }
     }
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
+
 
   /* --------------------------------------------------------------------------
      9. Main RequestAnimationFrame Loop
