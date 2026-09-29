@@ -36,7 +36,7 @@ html, body {
   position: fixed;
   inset: 0;
   font-family: var(--primary-font);
-  background: radial-gradient(circle at 50% 30%, #a8e6cf 0%, #56ab2f 60%, #2e7d32 100%);
+  background: radial-gradient(circle at 50% 25%, #7bf095 0%, #38b000 45%, #007200 85%, #004b00 100%);
   touch-action: none;
   overscroll-behavior: none;
 }
