@@ -723,9 +723,23 @@
     ctx.fillRect(0, 0, W, goalY);
 
     // 2. Fluffy White Sky Clouds
-    ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
     ctx.beginPath(); ctx.arc(40, 30, 22, 0, Math.PI * 2); ctx.arc(65, 25, 28, 0, Math.PI * 2); ctx.arc(90, 32, 20, 0, Math.PI * 2); ctx.fill();
     ctx.beginPath(); ctx.arc(W - 80, 35, 20, 0, Math.PI * 2); ctx.arc(W - 55, 28, 25, 0, Math.PI * 2); ctx.arc(W - 30, 36, 18, 0, Math.PI * 2); ctx.fill();
+
+    // Floating Confetti & Star Sparkles (Matches Image atmosphere)
+    var confettiColors = ["#ff4d4f", "#ffec3d", "#4096ff", "#73d13d", "#ff85c0"];
+    for (var f = 0; f < 18; f++) {
+      var fx = (f * 25 + Math.sin(tclock + f) * 10) % W;
+      var fy = (f * 15 + Math.cos(tclock * 0.8 + f) * 8) % (goalY - 10);
+      ctx.fillStyle = confettiColors[f % confettiColors.length];
+      if (f % 3 === 0) {
+        ctx.font = "10px Fredoka, sans-serif";
+        ctx.fillText("⭐", fx, fy);
+      } else {
+        ctx.fillRect(fx, fy, 4, 6);
+      }
+    }
 
     // 3. Stadium Floodlight Towers (Matches Image)
     ctx.fillStyle = "#a6b9d0";
@@ -749,6 +763,18 @@
       ctx.beginPath(); ctx.arc(c, goalY - 45, 3.5, 0, Math.PI * 2); ctx.fill();
     }
 
+    // Background Digital Scoreboard (Matches Image "0:0" Board)
+    ctx.fillStyle = "#0c182b";
+    ctx.strokeStyle = "#ffcc00";
+    ctx.lineWidth = 1.8;
+    drawRoundRect(ctx, W / 2 - 26, goalY - 60, 52, 20, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = "900 11px Fredoka, sans-serif";
+    ctx.fillStyle = "#ffeb3b";
+    ctx.textAlign = "center";
+    ctx.fillText(score + " : " + goals, W / 2, goalY - 46);
+
     // 5. Lush Playground Bushes & Trees Layer
     drawPlaygroundBushesAndTrees();
 
@@ -771,10 +797,22 @@
     ctx.strokeRect(W * 0.12, goalY - 28, W * 0.76, H * 0.54);
     ctx.beginPath(); ctx.arc(W / 2, ballStartY, 52, Math.PI, 0); ctx.stroke();
     
-    // Penalty Spot Dot
+    // Penalty Spot Dot & Kick Grass Burst
     ctx.fillStyle = "#ffffff";
     ctx.beginPath(); ctx.arc(W / 2, ballStartY, 4, 0, Math.PI * 2); ctx.fill();
+
+    // Grass Energy Burst at Kick Spot (Matches bottom-left of ball in image!)
+    ctx.fillStyle = "rgba(255, 235, 59, 0.45)";
+    ctx.beginPath(); ctx.ellipse(ballStartX - 15, ballStartY + 12, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffeb3b";
+    for (var b = 0; b < 6; b++) {
+      var ba = b * (Math.PI / 3);
+      ctx.beginPath();
+      ctx.arc(ballStartX - 15 + Math.cos(ba) * 14, ballStartY + 12 + Math.sin(ba) * 5, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+
 
 
   function drawGoal() {
