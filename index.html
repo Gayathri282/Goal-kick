@@ -1,65 +1,104 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#278003">
-  <title>Goal Kick! - Minimal Playfield-First Soccer Arcade</title>
-
+  <meta name="theme-color" content="#52c41a">
+  <title>Whack It! - Child Friendly Arcade Game</title>
+  
   <!-- SEO & Meta -->
-  <meta name="description" content="A super fun, minimal playfield-first Goal Kick soccer arcade game! Swipe up on the ball to score goals!">
-  <meta name="keywords" content="goal kick, soccer game, html5 game, mobile arcade">
-
-  <!-- Google Fonts: Lilita One & Fredoka -->
+  <meta name="description" content="A super fun, colorful, child-friendly Whack-It game! Tap the cute hamsters, bunnies, and kitty stars while avoiding cheeky raccoons in full screen!">
+  <meta name="keywords" content="whack a mole, kids game, html5 game, browser game, mobile game, child friendly">
+  
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;900&family=Lilita+One&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-  <!-- Fullscreen Canvas Playfield (Dominates 95%+ of Screen) -->
+  <!-- Fullscreen Canvas playgrid -->
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Minimal Hyper-Casual Single-Line Top HUD Bar -->
+  <!-- Lightweight Compact HUD Bar (Always visible) -->
   <div id="hud" class="hud-container">
-    <div class="hud-left">
-      <span class="hud-inline-score">Score <strong id="scoreText">0</strong></span>
-      <span class="hud-pill-badge" id="tierNameText">Lv. 1</span>
+    <div class="hud-item score-item">
+      <span class="hud-icon">🎯</span>
+      <span id="scoreText" class="hud-value">0</span>
     </div>
 
-    <div class="hud-right">
+    <div class="hud-center-group">
+      <span id="levelNameText" class="hud-tag">Lv. 1</span>
+      <span id="timerPill" class="hud-tag timer-tag">⏱️ <span id="timerText">45s</span></span>
+      <span id="goalText" class="hud-tag goal-tag">0/12</span>
+    </div>
+
+    <div class="hud-right-group">
       <div class="lives-box" id="livesContainer">
         <!-- Dynamic Hearts rendered here -->
       </div>
-      <span class="hud-inline-best">BEST <strong id="bestHudText">0</strong></span>
-      <button class="help-btn" id="helpBtn" aria-label="Help">?</button>
+      <span id="missText" class="hud-tag miss-tag">💨 0/3</span>
+      <button class="help-btn" id="helpBtn" title="How to Play" aria-label="How to Play">?</button>
     </div>
   </div>
 
-  <!-- Compact How to Play Help Modal (Opened by ? button) -->
-  <div class="overlay-layer hidden" id="helpModal">
-    <div class="help-card pop-in">
-      <button class="modal-close-btn" id="closeHelpBtn" aria-label="Close">×</button>
-      <h3 class="help-title">How to Play</h3>
-      <div class="help-list">
-        <div class="help-item"><span>🎮</span> Swipe up on the ball to strike</div>
-        <div class="help-item"><span>🎯</span> Aim away from the Goalie</div>
-        <div class="help-item"><span>🚀</span> Swipe speed gives shot power</div>
-        <div class="help-item"><span>❤️</span> Don't miss 3 times</div>
+  <!-- Unobtrusive Bottom Tap-to-Play Banner (Opening Screen) -->
+  <div class="start-banner" id="titleScreen">
+    <button class="play-btn start-floating-btn" id="startBtn">
+      <span>TAP TO PLAY 🚀</span>
+    </button>
+  </div>
+
+  <!-- Compact How to Play Modal (Triggered by ? Button) -->
+  <div class="overlay-layer hidden" id="helpScreen">
+    <div class="game-card modal-card pop-in">
+      <button class="close-btn" id="closeHelpBtn" aria-label="Close">×</button>
+      <h2 class="modal-title">How to Play 🎮</h2>
+      
+      <div class="help-grid">
+        <div class="help-row">
+          <span class="help-icon hamster-bg">🐹</span>
+          <div class="help-desc">
+            <strong>Tap Cute Hamsters</strong>
+            <span>+1 Point</span>
+          </div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon gold-bg">🐰⭐</span>
+          <div class="help-desc">
+            <strong>Golden Bunny & Kitty</strong>
+            <span>+5 Stars / +3 Points</span>
+          </div>
+        </div>
+        <div class="help-row">
+          <span class="help-icon raccoon-bg">🦝</span>
+          <div class="help-desc">
+            <strong>Cheeky Raccoon</strong>
+            <span>Avoid! -1 Heart</span>
+          </div>
+        </div>
       </div>
+
+      <div class="help-tips">
+        <span>⏱️ Beat timer • 🎯 Reach goal • 💨 Max 3 misses</span>
+      </div>
+
+      <button class="play-btn modal-ok-btn" id="gotItBtn">
+        <span>GOT IT! 👍</span>
+      </button>
     </div>
   </div>
 
-  <!-- Game Over Overlay (Compact Modal) -->
+  <!-- Game Over Overlay -->
   <div class="overlay-layer hidden" id="gameOverScreen">
-    <div class="game-card pop-in" id="overCard">
-      <div class="card-badge orange-badge">FULL TIME</div>
-      <h2 class="over-title" id="overTitle">Great Kick! 🎉</h2>
-      <p class="over-reason" id="overReasonText">Out of chances!</p>
-
+    <div class="game-card modal-card pop-in" id="overCard">
+      <div class="card-badge orange-badge">GAME OVER</div>
+      <h2 class="over-title" id="overTitle">Awesome Effort! 🎉</h2>
+      <p class="over-reason" id="overReasonText">Out of hearts!</p>
+      
       <div class="score-display">
         <span class="score-label">FINAL SCORE</span>
         <span class="final-score" id="finalScoreText">0</span>
@@ -67,12 +106,12 @@
 
       <div class="stats-row">
         <div class="stat-pill">
-          <span class="stat-icon">⚽</span>
-          <span id="goalsText">0 Goals</span>
+          <span class="stat-icon">🎯</span>
+          <span id="whackedText">0 Whacked</span>
         </div>
         <div class="stat-pill">
           <span class="stat-icon">🔥</span>
-          <span id="bestStreakText">Best Streak 0</span>
+          <span id="bestStreakText">Streak 0</span>
         </div>
       </div>
 
@@ -81,21 +120,25 @@
       </div>
 
       <button class="play-btn again-btn" id="againBtn">
-        <span>KICK AGAIN 🔄</span>
+        <span>PLAY AGAIN 🔄</span>
       </button>
     </div>
   </div>
 
-  <!-- Pause Overlay (Compact Modal) -->
+  <!-- Pause Overlay -->
   <div class="overlay-layer hidden" id="pauseScreen">
-    <div class="game-card pop-in">
+    <div class="game-card modal-card pop-in">
       <div class="card-badge blue-badge">PAUSED</div>
       <h2 class="game-title">Game Paused ⏸️</h2>
-      <p class="game-subtitle">Taking a quick water break? The goalie is waiting!</p>
+      <p class="game-subtitle">The cute hamsters are waiting!</p>
 
       <button class="play-btn" id="resumeBtn">
         <span>RESUME GAME ▶️</span>
       </button>
+
+      <div class="desktop-hint">
+        <span>💡 Press <kbd>P</kbd> or <kbd>ESC</kbd> to resume</span>
+      </div>
     </div>
   </div>
 
@@ -103,5 +146,3 @@
   <script src="script.js"></script>
 </body>
 </html>
-
-
