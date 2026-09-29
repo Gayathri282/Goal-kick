@@ -137,9 +137,27 @@
       }
     }
     if (actx && actx.state === "suspended") {
-      actx.resume();
+      try {
+        var p = actx.resume();
+        if (p && typeof p.catch === "function") {
+          p.catch(function () {});
+        }
+      } catch (err) {}
     }
   }
+
+  function handleUserInteraction() {
+    initAudio();
+    if (state === STATE_PLAY && !isBgmPlaying) {
+      startBgm();
+    }
+  }
+
+  window.addEventListener("pointerdown", handleUserInteraction, { passive: true });
+  window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+  window.addEventListener("touchend", handleUserInteraction, { passive: true });
+  window.addEventListener("click", handleUserInteraction, { passive: true });
+  window.addEventListener("keydown", handleUserInteraction, { passive: true });
 
   function startBgm() {
     initAudio();
@@ -149,6 +167,13 @@
 
     bgmInterval = setInterval(function () {
       if (!actx || !isBgmPlaying) return;
+
+      if (actx.state === "suspended") {
+        try {
+          var p = actx.resume();
+          if (p && typeof p.catch === "function") p.catch(function () {});
+        } catch (err) {}
+      }
 
       var note = BGM_MELODY[bgmNoteStep % BGM_MELODY.length];
       var bassNote = BGM_BASS[(bgmNoteStep / 2 | 0) % BGM_BASS.length];
@@ -187,6 +212,7 @@
       } catch (e) {}
     }, 160);
   }
+
 
   function stopBgm() {
     isBgmPlaying = false;
@@ -1429,11 +1455,25 @@
   });
 
   /* --------------------------------------------------------------------------
-     12. Auto-Pause on Window Blur / Tab Close / Visibility Change
+     12. Auto-Pause & Audio Resume on Window Blur / Tab Close / Visibility Change
      -------------------------------------------------------------------------- */
   document.addEventListener("visibilitychange", function () {
-    if (document.hidden && state === STATE_PLAY) {
-      pauseGame();
+    if (document.hidden) {
+      if (state === STATE_PLAY) {
+        pauseGame();
+      }
+    } else {
+      if (state === STATE_PLAY) {
+        initAudio();
+        startBgm();
+      }
+    }
+  });
+
+  window.addEventListener("pageshow", function () {
+    if (!document.hidden && state === STATE_PLAY) {
+      initAudio();
+      startBgm();
     }
   });
 
@@ -1452,6 +1492,7 @@
   window.addEventListener("contextmenu", function (e) {
     e.preventDefault();
   });
+
 
   /* --------------------------------------------------------------------------
      13. Engine Boot
