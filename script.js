@@ -21,9 +21,13 @@
   var hudEl = document.getElementById("hud");
   var scoreText = document.getElementById("scoreText");
   var tierNameText = document.getElementById("tierNameText");
-  var streakText = document.getElementById("streakText");
   var livesContainer = document.getElementById("livesContainer");
   var bestHudText = document.getElementById("bestHudText");
+
+  // Help Modal Elements
+  var helpBtn = document.getElementById("helpBtn");
+  var helpModal = document.getElementById("helpModal");
+  var closeHelpBtn = document.getElementById("closeHelpBtn");
 
   // Screen Overlays
   var titleScreen = document.getElementById("titleScreen");
@@ -42,6 +46,7 @@
   var bestScoreText = document.getElementById("bestScoreText");
   var overTitle = document.getElementById("overTitle");
   var overReasonText = document.getElementById("overReasonText");
+
 
   /* --------------------------------------------------------------------------
      2. Dual Mobile & Desktop Responsive Layout Engine
@@ -396,12 +401,11 @@
   }
 
   function updateHUDUI() {
-    var t = TIERS[tier];
-    scoreText.textContent = score;
-    tierNameText.textContent = t.name;
-    streakText.textContent = streak > 1 ? ("STREAK x" + streak) : (goals + " Goals");
-    bestHudText.textContent = best;
+    if (scoreText) scoreText.textContent = score;
+    if (tierNameText) tierNameText.textContent = "Lv. " + (tier + 1);
+    if (bestHudText) bestHudText.textContent = best;
   }
+
 
   function burstParticles(x, y, n, color, spread, power) {
     for (var i = 0; i < n; i++) {
@@ -1340,10 +1344,11 @@
     resetGame();
     state = STATE_PLAY;
 
-    titleScreen.classList.add("hidden");
-    gameOverScreen.classList.add("hidden");
-    pauseScreen.classList.add("hidden");
-    hudEl.classList.remove("hidden");
+    if (titleScreen) titleScreen.classList.add("hidden");
+    if (helpModal) helpModal.classList.add("hidden");
+    if (gameOverScreen) gameOverScreen.classList.add("hidden");
+    if (pauseScreen) pauseScreen.classList.add("hidden");
+    if (hudEl) hudEl.classList.remove("hidden");
     lastTs = 0;
   }
 
@@ -1356,51 +1361,81 @@
       try {
         localStorage.setItem("goalkick_best", String(best));
       } catch (e) {}
-      bestScoreText.textContent = best + " (NEW RECORD!) 🎉";
+      if (bestScoreText) bestScoreText.textContent = best + " (NEW RECORD!) 🎉";
     } else {
-      bestScoreText.textContent = String(best);
+      if (bestScoreText) bestScoreText.textContent = String(best);
     }
 
     var lines = ["Full Time! 🎉", "Great Effort! 🌟", "Final Whistle! ⚽", "Bench Time! 👍"];
-    overTitle.textContent = lines[(Math.random() * lines.length) | 0];
-    overReasonText.textContent = "Out of lives!";
-    finalScoreText.textContent = score;
-    goalsText.textContent = goals + " Goals";
-    bestStreakText.textContent = "Best Streak " + bestStreak;
+    if (overTitle) overTitle.textContent = lines[(Math.random() * lines.length) | 0];
+    if (overReasonText) overReasonText.textContent = "Out of lives!";
+    if (finalScoreText) finalScoreText.textContent = score;
+    if (goalsText) goalsText.textContent = goals + " Goals";
+    if (bestStreakText) bestStreakText.textContent = "Best Streak " + bestStreak;
 
-    hudEl.classList.add("hidden");
-    gameOverScreen.classList.remove("hidden");
+    if (hudEl) hudEl.classList.add("hidden");
+    if (gameOverScreen) gameOverScreen.classList.remove("hidden");
   }
 
   function pauseGame() {
     if (state !== STATE_PLAY) return;
     state = STATE_PAUSED;
     stopBgm();
-    pauseScreen.classList.remove("hidden");
+    if (pauseScreen) pauseScreen.classList.remove("hidden");
   }
 
   function resumeGame() {
     if (state !== STATE_PAUSED) return;
     state = STATE_PLAY;
     startBgm();
-    pauseScreen.classList.add("hidden");
+    if (pauseScreen) pauseScreen.classList.add("hidden");
     lastTs = 0;
   }
 
-  startBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    startGame();
-  });
+  if (startBtn) {
+    startBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      startGame();
+    });
+  }
 
-  againBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    startGame();
-  });
+  if (againBtn) {
+    againBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      startGame();
+    });
+  }
 
-  resumeBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    resumeGame();
-  });
+  if (resumeBtn) {
+    resumeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resumeGame();
+    });
+  }
+
+  if (helpBtn) {
+    helpBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      initAudio();
+      if (helpModal) helpModal.classList.remove("hidden");
+    });
+  }
+
+  if (closeHelpBtn) {
+    closeHelpBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (helpModal) helpModal.classList.add("hidden");
+    });
+  }
+
+  if (helpModal) {
+    helpModal.addEventListener("click", function (e) {
+      if (e.target === helpModal) {
+        helpModal.classList.add("hidden");
+      }
+    });
+  }
+
 
   /* --------------------------------------------------------------------------
      11. Touch & Pointer Swipe Handling
@@ -1495,10 +1530,11 @@
 
 
   /* --------------------------------------------------------------------------
-     13. Engine Boot
+     13. Engine Boot (Immediate Direct Entry to Playfield)
      -------------------------------------------------------------------------- */
   resize();
-  resetGame();
+  startGame();
   requestAnimationFrame(gameLoop);
 
 })();
+

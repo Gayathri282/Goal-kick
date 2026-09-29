@@ -62,25 +62,31 @@ canvas#gameCanvas:active {
 /* --------------------------------------------------------------------------
    HUD Top Navigation Bar (Mobile & Desktop Responsive)
    -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   Minimal Hyper-Casual Single-Line Top HUD Bar
+   -------------------------------------------------------------------------- */
 .hud-container {
   position: fixed;
-  top: max(10px, env(safe-area-inset-top));
+  top: max(8px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
-  width: calc(100% - 24px);
-  max-width: 540px;
+  width: calc(100% - 20px);
+  max-width: 520px;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 3px solid rgba(255, 255, 255, 0.95);
+  padding: 6px 14px;
+  background: rgba(10, 25, 15, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
   border-radius: var(--radius-pill);
-  box-shadow: 0 10px 28px var(--shadow-color), 0 3px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
   transition: opacity 0.3s ease, transform 0.3s ease;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .hud-container.hidden {
@@ -89,56 +95,54 @@ canvas#gameCanvas:active {
   transform: translate(-50%, -24px);
 }
 
-.hud-item {
+.hud-left, .hud-right {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 10px;
 }
 
-.score-box {
-  align-items: flex-start;
+.hud-inline-score {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e6f7ff;
 }
 
-.hud-label {
-  font-size: 10px;
+.hud-inline-score strong {
+  font-size: 17px;
+  font-weight: 900;
+  color: #ffeb3b;
+  margin-left: 3px;
+}
+
+.hud-pill-badge {
+  background: linear-gradient(135deg, #73d13d, #389e0d);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.hud-inline-best {
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #8c8c8c;
+  color: rgba(255, 255, 255, 0.75);
 }
 
-.hud-value {
-  font-size: clamp(20px, 3.5vw, 28px);
-  font-weight: 700;
-  color: #1f3824;
-  line-height: 1;
-  text-shadow: 0 1px 0 #fff;
-}
-
-.hud-subvalue {
-  font-size: clamp(13px, 2.8vw, 16px);
-  font-weight: 700;
-  color: #389e0d;
-}
-
-.level-box {
-  align-items: center;
-}
-
-/* Status Box: Hearts & Best */
-.status-box {
-  align-items: flex-end;
-  gap: 2px;
+.hud-inline-best strong {
+  color: #ffc53d;
 }
 
 .lives-box {
   display: flex;
   flex-direction: row;
-  gap: 4px;
+  gap: 3px;
   align-items: center;
 }
 
 .heart-icon {
-  font-size: clamp(16px, 3vw, 20px);
+  font-size: 14px;
   display: inline-block;
   filter: drop-shadow(0 2px 4px rgba(255, 77, 79, 0.4));
   transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -149,35 +153,118 @@ canvas#gameCanvas:active {
   transform: scale(0.75);
 }
 
-.best-box {
+/* Small Circular ? Help Button */
+.help-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+  color: #ffffff;
+  font-family: var(--primary-font);
+  font-size: 14px;
+  font-weight: 900;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #8c8c8c;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.best-value {
-  color: #d48806;
+.help-btn:hover {
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.help-btn:active {
+  transform: scale(0.95);
 }
 
 /* --------------------------------------------------------------------------
-   Overlay Layers (Title, Game Over, Pause)
+   Overlay Layers & Compact Help Modal
    -------------------------------------------------------------------------- */
 .overlay-layer {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
-  background: radial-gradient(circle at center, rgba(10, 40, 20, 0.45) 0%, rgba(5, 20, 10, 0.82) 100%);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   transition: opacity 0.3s ease;
 }
+
+/* How to Play Compact Modal */
+.help-card {
+  width: 100%;
+  max-width: 340px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 22px;
+  padding: 20px 22px;
+  text-align: left;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  border: 3px solid #ffffff;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  border: none;
+  font-size: 18px;
+  font-weight: 700;
+  color: #595959;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.modal-close-btn:hover {
+  background: #e0e0e0;
+  color: #000;
+}
+
+.help-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #1f3824;
+  margin-bottom: 14px;
+}
+
+.help-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  background: #f6ffed;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid #b7eb8f;
+}
+
+.help-item span {
+  font-size: 16px;
+}
+
 
 .overlay-layer.hidden {
   display: none !important;
