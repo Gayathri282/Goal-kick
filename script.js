@@ -1174,7 +1174,7 @@
   function drawBall() {
     if (ball.state === BALL_RESULT && resultTimer < 0.35) return;
 
-    // Rainbow energy trail with stars (Matches Image)
+    // Rainbow energy trail with stars
     var rainbowColors = ["#ff4d4f", "#ff9c6e", "#ffec3d", "#73d13d", "#4096ff", "#9254de"];
     for (var i = 0; i < trail.length; i++) {
       var tr = trail[i];
@@ -1194,28 +1194,134 @@
     }
     ctx.globalAlpha = 1;
 
+    // Ground Drop Shadow (scales naturally with distance from kick spot)
+    var shadowScale = Math.max(0.35, 1 - Math.abs(ball.y - ballStartY) / 320);
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(ball.x, Math.max(ball.y + 14, ballStartY + 14), 14 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
     ctx.save();
     ctx.translate(ball.x, ball.y);
-    ctx.rotate(tclock * 6);
 
-    // Ball Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.24)";
-    ctx.beginPath(); ctx.ellipse(0, 13, 11, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+    // Realistic ball rotation during flight and idle
+    var spinAngle = (ball.state === BALL_FLIGHT) ? (performance.now() * 0.009 + ball.x * 0.02) : (tclock * 1.5);
+    ctx.rotate(spinAngle);
 
-    // Soccer Ball Gradient
-    var g = ctx.createRadialGradient(-3, -3, 1, 0, 0, 12);
+    var R = 15.5; // High-definition crisp football size
+
+    // 1. Sphere Base with Realistic 3D Ambient Lighting
+    var g = ctx.createRadialGradient(-R * 0.35, -R * 0.35, R * 0.1, 0, 0, R);
     g.addColorStop(0, "#ffffff");
-    g.addColorStop(1, "#e6e6e6");
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill();
+    g.addColorStop(0.65, "#f2f5f8");
+    g.addColorStop(0.9, "#d3dde8");
+    g.addColorStop(1, "#acb7c6");
 
-    // Black Pentagons
-    ctx.fillStyle = "#1a1a1a";
-    ctx.beginPath(); ctx.arc(0, 0, 3.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Center Black Pentagon Patch
+    var rCentral = R * 0.40;
+    var centralVertices = [];
+    ctx.beginPath();
     for (var k = 0; k < 5; k++) {
-      var a = k * (Math.PI * 2 / 5);
-      ctx.beginPath(); ctx.arc(Math.cos(a) * 8, Math.sin(a) * 8, 2.4, 0, Math.PI * 2); ctx.fill();
+      var angle = k * (Math.PI * 2 / 5) - Math.PI / 2;
+      var px = Math.cos(angle) * rCentral;
+      var py = Math.sin(angle) * rCentral;
+      centralVertices.push({ x: px, y: py, angle: angle });
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
+    ctx.closePath();
+
+    // Dark charcoal leather gradient for central pentagon
+    var centralGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, rCentral);
+    centralGrad.addColorStop(0, "#2c313a");
+    centralGrad.addColorStop(1, "#11141a");
+    ctx.fillStyle = centralGrad;
+    ctx.fill();
+    ctx.strokeStyle = "#171a21";
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // 3. Surrounding 5 Black Pentagons & Leather Seam Lines
+    ctx.strokeStyle = "rgba(25, 30, 40, 0.85)";
+    ctx.lineWidth = 1.3;
+
+    for (var j = 0; j < 5; j++) {
+      var v1 = centralVertices[j];
+      var v2 = centralVertices[(j + 1) % 5];
+
+      // Draw seam line connecting central pentagon corner outward
+      var outerDist = R * 0.96;
+      var seamX = Math.cos(v1.angle) * outerDist;
+      var seamY = Math.sin(v1.angle) * outerDist;
+
+      ctx.beginPath();
+      ctx.moveTo(v1.x, v1.y);
+      ctx.lineTo(seamX, seamY);
+      ctx.stroke();
+
+      // Outer pentagon patch center angle
+      var midAngle = v1.angle + Math.PI / 5;
+      var pCenterDist = R * 0.78;
+      var pcX = Math.cos(midAngle) * pCenterDist;
+      var pcY = Math.sin(midAngle) * pCenterDist;
+
+      // Draw foreshortened outer black pentagon
+      ctx.beginPath();
+      for (var p = 0; p < 5; p++) {
+        var pa = p * (Math.PI * 2 / 5) + midAngle;
+        var pr = R * 0.23;
+        var pX = pcX + Math.cos(pa) * pr * 0.65;
+        var pY = pcY + Math.sin(pa) * pr * 0.65;
+        if (p === 0) ctx.moveTo(pX, pY);
+        else ctx.lineTo(pX, pY);
+      }
+      ctx.closePath();
+
+      var outerPatchGrad = ctx.createRadialGradient(pcX, pcY, 0, pcX, pcY, R * 0.25);
+      outerPatchGrad.addColorStop(0, "#282c35");
+      outerPatchGrad.addColorStop(1, "#12151b");
+      ctx.fillStyle = outerPatchGrad;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Outer edge seam circle
+    ctx.beginPath();
+    ctx.arc(0, 0, R - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(18, 22, 30, 0.9)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // 4. 3D Spherical Edge Shadow Overlay
+    var innerShadow = ctx.createRadialGradient(0, 0, R * 0.65, 0, 0, R);
+    innerShadow.addColorStop(0, "rgba(0,0,0,0)");
+    innerShadow.addColorStop(0.75, "rgba(15,25,40,0.06)");
+    innerShadow.addColorStop(1, "rgba(15,25,40,0.32)");
+    ctx.fillStyle = innerShadow;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Specular Gloss Arc & Highlight
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.70)";
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(-R * 0.15, -R * 0.15, R * 0.72, Math.PI * 1.05, Math.PI * 1.55);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.beginPath();
+    ctx.arc(-R * 0.45, -R * 0.45, R * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
     ctx.restore();
   }
 
