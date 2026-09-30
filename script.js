@@ -1,11 +1,11 @@
 /**
- * Whack It! - Child Friendly Fullscreen Web Game Engine
+ * Goal Kick! - Child Friendly Fullscreen Web Game Engine
  * Features:
- * - 100% Fullscreen playgrid layout on all devices (No letterboxing)
- * - Engaging Web Audio synthesizer with BGM loop & event tones
- * - Super child-friendly characters (Hamster, Golden Bunny, Cheeky Raccoon, Party Kitty)
+ * - Dual Mobile & Desktop Responsive Engine (100% Viewport Fill)
+ * - Web Audio Synthesizer with BGM loop & event SFX tones
+ * - Super child-friendly characters (Cute Goalie Bear & Shiny Soccer Ball)
  * - Auto-pause on tab switch / window blur / window close
- * - Level countdown timer, consecutive miss tracking & target goals
+ * - Streak multiplier, Screamer power shots, and level progression
  */
 
 (function () {
@@ -20,41 +20,39 @@
   // HUD Elements
   var hudEl = document.getElementById("hud");
   var scoreText = document.getElementById("scoreText");
-  var levelNameText = document.getElementById("levelNameText");
-  var timerText = document.getElementById("timerText");
-  var timerPill = document.getElementById("timerPill");
-  var goalText = document.getElementById("goalText");
+  var tierNameText = document.getElementById("tierNameText");
   var livesContainer = document.getElementById("livesContainer");
-  var missText = document.getElementById("missText");
+  var bestHudText = document.getElementById("bestHudText");
+
+  // Help Modal Elements
   var helpBtn = document.getElementById("helpBtn");
+  var helpModal = document.getElementById("helpModal");
+  var closeHelpBtn = document.getElementById("closeHelpBtn");
 
   // Screen Overlays
   var titleScreen = document.getElementById("titleScreen");
   var gameOverScreen = document.getElementById("gameOverScreen");
   var pauseScreen = document.getElementById("pauseScreen");
-  var helpScreen = document.getElementById("helpScreen");
 
   // Action Buttons
   var startBtn = document.getElementById("startBtn");
   var againBtn = document.getElementById("againBtn");
   var resumeBtn = document.getElementById("resumeBtn");
-  var closeHelpBtn = document.getElementById("closeHelpBtn");
-  var gotItBtn = document.getElementById("gotItBtn");
 
   // End Screen Stats
   var finalScoreText = document.getElementById("finalScoreText");
-  var whackedText = document.getElementById("whackedText");
+  var goalsText = document.getElementById("goalsText");
   var bestStreakText = document.getElementById("bestStreakText");
   var bestScoreText = document.getElementById("bestScoreText");
   var overTitle = document.getElementById("overTitle");
   var overReasonText = document.getElementById("overReasonText");
 
+
   /* --------------------------------------------------------------------------
      2. Dual Mobile & Desktop Responsive Layout Engine
      -------------------------------------------------------------------------- */
-  var W = 600, H = 900, scale = 1, offX = 0, offY = 0, dpr = 1;
-  var GRID_R = 3, GRID_C = 3;
-  var gridTop = 100, gridBot = 800, cellW = 200, cellH = 220;
+  var W = 400, H = 700, scale = 1, offX = 0, offY = 0, dpr = 1;
+  var ballStartX, ballStartY, goalY, goalBandBottom;
 
   function resize() {
     var vw = window.innerWidth;
@@ -67,19 +65,16 @@
     var aspect = vw / vh;
 
     if (aspect < 0.85) {
-      // MOBILE PORTRAIT LAYOUT: 100% Fullscreen Viewport Fill
-      W = 600;
-      H = Math.round(W / aspect);
+      // MOBILE PORTRAIT LAYOUT: Fill 100% of viewport screen
+      W = 400;
+      H = Math.max(540, Math.min(1000, Math.round(W / aspect)));
       scale = (vw * dpr) / W;
       offX = 0;
       offY = 0;
-      gridTop = Math.max(90, H * 0.12);
-      gridBot = H * 0.94;
     } else {
-      // DESKTOP / TABLET / LANDSCAPE WIDESCREEN:
-      // Center stage with natural round hole proportions while canvas fills 100% monitor
-      H = 800;
-      W = 540;
+      // DESKTOP / TABLET / LANDSCAPE: Center stage arcade presentation
+      H = 700;
+      W = 420;
       var targetH = Math.min(vh * dpr * 0.92, H * 1.15 * dpr);
       var targetW = targetH * (W / H);
 
@@ -91,12 +86,12 @@
       scale = targetW / W;
       offX = (vw * dpr - targetW) / 2;
       offY = (vh * dpr - targetH) / 2;
-      gridTop = H * 0.12;
-      gridBot = H * 0.93;
     }
 
-    cellW = W / GRID_C;
-    cellH = (gridBot - gridTop) / GRID_R;
+    ballStartX = W / 2;
+    ballStartY = H * 0.82;
+    goalY = H * 0.25;
+    goalBandBottom = H * 0.29;
   }
 
   window.addEventListener("resize", resize);
@@ -114,12 +109,11 @@
   var isBgmPlaying = false;
   var bgmNoteStep = 0;
 
-  // Upbeat, engaging, child-friendly melody & bassline
   var BGM_MELODY = [
-    523.25, 659.25, 783.99, 659.25, 783.99, 1046.50, 783.99, 659.25,
-    587.33, 698.46, 880.00, 698.46, 880.00, 1174.66, 880.00, 698.46,
-    659.25, 783.99, 987.77, 783.99, 987.77, 1318.51, 987.77, 783.99,
-    698.46, 880.00, 1046.50, 880.00, 1174.66, 1318.51, 1046.50, 783.99
+    523.25, 659.25, 783.99, 1046.50,  783.99, 659.25, 523.25, 659.25,
+    587.33, 698.46, 880.00, 1174.66,  880.00, 698.46, 587.33, 698.46,
+    659.25, 783.99, 987.77, 1318.51,  987.77, 783.99, 659.25, 783.99,
+    698.46, 880.00, 1046.50, 1318.51, 1174.66, 1046.50, 880.00, 783.99
   ];
 
   var BGM_BASS = [
@@ -141,32 +135,34 @@
         masterGain.connect(actx.destination);
 
         bgmGain = actx.createGain();
-        bgmGain.gain.value = 0.09;
+        bgmGain.gain.value = 0.08;
         bgmGain.connect(masterGain);
       } catch (e) {
         actx = null;
       }
     }
     if (actx && actx.state === "suspended") {
-      actx.resume().catch(function () { });
+      try {
+        var p = actx.resume();
+        if (p && typeof p.catch === "function") {
+          p.catch(function () {});
+        }
+      } catch (err) {}
     }
   }
 
-  function resumeAudioContext() {
+  function handleUserInteraction() {
     initAudio();
-    if (actx && actx.state === "suspended") {
-      actx.resume().catch(function () { });
-    }
-    if (state === STATE_PLAY && !isBgmPlaying && actx && actx.state === "running") {
+    if (state === STATE_PLAY && !isBgmPlaying) {
       startBgm();
     }
   }
 
-  // Register interaction listeners for robust mobile & desktop Web Audio unlock/resume
-  var interactionEvents = ["pointerdown", "touchstart", "touchend", "mousedown", "keydown", "click"];
-  interactionEvents.forEach(function (evt) {
-    window.addEventListener(evt, resumeAudioContext, { capture: true, passive: true });
-  });
+  window.addEventListener("pointerdown", handleUserInteraction, { passive: true });
+  window.addEventListener("touchstart", handleUserInteraction, { passive: true });
+  window.addEventListener("touchend", handleUserInteraction, { passive: true });
+  window.addEventListener("click", handleUserInteraction, { passive: true });
+  window.addEventListener("keydown", handleUserInteraction, { passive: true });
 
   function startBgm() {
     initAudio();
@@ -177,6 +173,13 @@
     bgmInterval = setInterval(function () {
       if (!actx || !isBgmPlaying) return;
 
+      if (actx.state === "suspended") {
+        try {
+          var p = actx.resume();
+          if (p && typeof p.catch === "function") p.catch(function () {});
+        } catch (err) {}
+      }
+
       var note = BGM_MELODY[bgmNoteStep % BGM_MELODY.length];
       var bassNote = BGM_BASS[(bgmNoteStep / 2 | 0) % BGM_BASS.length];
       bgmNoteStep++;
@@ -184,7 +187,6 @@
       try {
         var t0 = actx.currentTime;
 
-        // Lead Melody Synth
         var osc = actx.createOscillator();
         var g = actx.createGain();
         osc.type = (bgmNoteStep % 4 === 0) ? "triangle" : "sine";
@@ -198,7 +200,6 @@
         osc.start(t0);
         osc.stop(t0 + 0.18);
 
-        // Warm Bassline
         if (bgmNoteStep % 2 === 0) {
           var bassOsc = actx.createOscillator();
           var bassG = actx.createGain();
@@ -213,9 +214,10 @@
           bassOsc.start(t0);
           bassOsc.stop(t0 + 0.3);
         }
-      } catch (e) { }
+      } catch (e) {}
     }, 160);
   }
+
 
   function stopBgm() {
     isBgmPlaying = false;
@@ -239,7 +241,7 @@
       }
 
       g.gain.setValueAtTime(0.001, t0);
-      g.gain.exponentialRampToValueAtTime(o.vol || 0.2, t0 + 0.01);
+      g.gain.exponentialRampToValueAtTime(o.vol || 0.18, t0 + 0.01);
       g.gain.exponentialRampToValueAtTime(0.001, t0 + o.dur);
 
       osc.connect(g);
@@ -247,7 +249,7 @@
 
       osc.start(t0);
       osc.stop(t0 + o.dur + 0.02);
-    } catch (e) { }
+    } catch (e) {}
   }
 
   function playNoise(dur, vol, freq) {
@@ -262,7 +264,7 @@
       src.buffer = buf;
       var f = actx.createBiquadFilter();
       f.type = "bandpass";
-      f.frequency.value = freq || 1200;
+      f.frequency.value = freq || 900;
       f.Q.value = 1.2;
 
       var g = actx.createGain();
@@ -272,56 +274,72 @@
       f.connect(g);
       g.connect(masterGain);
       src.start();
-    } catch (e) { }
+    } catch (e) {}
   }
 
   var sfx = {
-    whack: function () {
-      playNoise(0.04, 0.12, 1600);
-      playTone({ from: 400, to: 200, dur: 0.08, type: "triangle", vol: 0.22 });
-      playTone({ from: 659.25, dur: 0.12, type: "sine", vol: 0.18, delay: 0.02 });
+    kick: function () {
+      playNoise(0.06, 0.1, 750);
+      playTone({ from: 180, to: 90, dur: 0.08, type: "triangle", vol: 0.12 });
     },
-    gold: function () {
-      playTone({ from: 783.99, dur: 0.1, type: "triangle", vol: 0.22 });
-      playTone({ from: 1046.50, dur: 0.14, type: "sine", vol: 0.24, delay: 0.06 });
-      playTone({ from: 1318.51, dur: 0.22, type: "sine", vol: 0.22, delay: 0.12 });
-    },
-    bad: function () {
-      playTone({ from: 280, to: 110, dur: 0.28, type: "sawtooth", vol: 0.18 });
-      playTone({ from: 160, to: 80, dur: 0.32, type: "triangle", vol: 0.2, delay: 0.05 });
-    },
-    miss: function () {
-      playTone({ from: 240, to: 150, dur: 0.12, type: "sine", vol: 0.12 });
-    },
-    streak: function () {
-      var notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+    goal: function () {
+      var notes = [523.25, 659.25, 783.99, 1046.50];
       for (var i = 0; i < notes.length; i++) {
-        playTone({ from: notes[i], dur: 0.14, type: "sine", vol: 0.18, delay: i * 0.05 });
+        playTone({ from: notes[i], dur: 0.2, type: "triangle", vol: 0.18, delay: i * 0.06 });
       }
     },
-    levelUp: function () {
-      var notes = [392.00, 523.25, 659.25, 783.99, 1046.50, 1318.51];
+    screamer: function () {
+      var notes = [659.25, 783.99, 1046.50, 1318.51];
       for (var i = 0; i < notes.length; i++) {
-        playTone({ from: notes[i], dur: 0.22, type: "triangle", vol: 0.24, delay: i * 0.06 });
+        playTone({ from: notes[i], dur: 0.22, type: "sine", vol: 0.22, delay: i * 0.05 });
+      }
+    },
+    miss: function () {
+      playTone({ from: 280, to: 140, dur: 0.22, type: "sawtooth", vol: 0.12 });
+      playNoise(0.08, 0.08, 450);
+    },
+    streak: function () {
+      var notes = [659.25, 880.00, 1174.66];
+      for (var i = 0; i < notes.length; i++) {
+        playTone({ from: notes[i], dur: 0.14, type: "triangle", vol: 0.16, delay: i * 0.05 });
+      }
+    },
+    levelup: function () {
+      var notes = [392.00, 523.25, 659.25, 783.99, 1046.50];
+      for (var i = 0; i < notes.length; i++) {
+        playTone({ from: notes[i], dur: 0.2, type: "triangle", vol: 0.2, delay: i * 0.06 });
       }
     },
     gameOver: function () {
-      playTone({ from: 523.25, to: 392, dur: 0.2, type: "triangle", vol: 0.18 });
-      playTone({ from: 392, to: 293.66, dur: 0.25, type: "triangle", vol: 0.18, delay: 0.18 });
-      playTone({ from: 293.66, to: 196, dur: 0.45, type: "sine", vol: 0.22, delay: 0.38 });
+      playTone({ from: 440, to: 349.23, dur: 0.2, type: "triangle", vol: 0.16 });
+      playTone({ from: 349.23, to: 261.63, dur: 0.25, type: "triangle", vol: 0.16, delay: 0.18 });
+      playTone({ from: 261.63, to: 174.61, dur: 0.4, type: "sine", vol: 0.2, delay: 0.38 });
     }
   };
 
   /* --------------------------------------------------------------------------
-     4. Level Tiers & Goals
+     4. Physics Tuning & Tiers
      -------------------------------------------------------------------------- */
+  var GRAVITY = 550;
+  var SENS_X = 2.6, SENS_Y = 3.1;
+  var VY_MIN = 300, VY_MAX = 950;
+  var VX_MAX = 360;
+
   var TIERS = [
-    { lvl: 1, name: "Sunny Meadow 🌱", target: 12, timeLimit: 45, maxConsecutiveMisses: 3, gap: [0.80, 1.2], up: [1.1, 1.4], maxC: 1, bad: 0.10, gold: 0.14 },
-    { lvl: 2, name: "Bouncy Burrow 🐰", target: 20, timeLimit: 40, maxConsecutiveMisses: 3, gap: [0.62, 0.98], up: [0.90, 1.2], maxC: 2, bad: 0.14, gold: 0.15 },
-    { lvl: 3, name: "Starry Park ⭐", target: 28, timeLimit: 35, maxConsecutiveMisses: 3, gap: [0.48, 0.80], up: [0.72, 0.98], maxC: 2, bad: 0.18, gold: 0.16 },
-    { lvl: 4, name: "Rainbow Rush 🌈", target: 36, timeLimit: 30, maxConsecutiveMisses: 3, gap: [0.38, 0.65], up: [0.58, 0.82], maxC: 3, bad: 0.22, gold: 0.18 },
-    { lvl: 5, name: "Super Whack! ⚡", target: 45, timeLimit: 25, maxConsecutiveMisses: 3, gap: [0.28, 0.50], up: [0.45, 0.68], maxC: 3, bad: 0.25, gold: 0.20 }
+    { g: 0,  name: "Practice Shots 🌱", amp: 38,  spd: 0.65, halfW: 58, keeper: false },
+    { g: 3,  name: "Warming Up ⚡",     amp: 66,  spd: 0.85, halfW: 52, keeper: false },
+    { g: 7,  name: "Keeper's In 🐻",    amp: 92,  spd: 1.05, halfW: 48, keeper: true, kRange: 24, kSpd: 1.5 },
+    { g: 13, name: "Under Pressure 🔥", amp: 112, spd: 1.30, halfW: 44, keeper: true, kRange: 32, kSpd: 1.9 },
+    { g: 20, name: "Cup Final 🏆",      amp: 128, spd: 1.55, halfW: 40, keeper: true, kRange: 38, kSpd: 2.3 }
   ];
+
+  function tierOf(goals) {
+    var idx = 0;
+    for (var k = 0; k < TIERS.length; k++) {
+      if (goals >= TIERS[k].g) idx = k;
+    }
+    return idx;
+  }
 
   /* --------------------------------------------------------------------------
      5. Game State & Logic Variables
@@ -333,63 +351,28 @@
 
   var state = STATE_TITLE;
 
-  var holes = [];
-  var particles = [];
-  var popups = [];
+  var BALL_READY = 0;
+  var BALL_FLIGHT = 1;
+  var BALL_RESULT = 2;
 
-  var score = 0;
-  var lives = 3;
-  var whacked = 0;
-  var streak = 0;
-  var bestStreak = 0;
-  var tier = 0;
-  var tierFlash = 0;
-  var bestScore = 0;
-  var alive = true;
-  var tclock = 0;
-  var shake = 0;
-  var flashRed = 0;
-  var spawnTimer = 0;
-
-  var levelTimer = 45;
-  var levelWhacked = 0;
-  var consecutiveMisses = 0;
-  var gameOverReason = "Out of hearts! 💔";
+  var ball, particles, popups, resultText, resultTimer, trail;
+  var score = 0, lives = 3, goals = 0, streak = 0, bestStreak = 0, tier = 0, tierFlash = 0, best = 0;
+  var alive = true, tclock = 0, shake = 0;
+  var goalPhase = 0, keeperPhase = 0;
 
   try {
-    bestScore = parseInt(localStorage.getItem("whack_best_score") || "0", 10) || 0;
-  } catch (e) { }
-
-  function holeXY(i) {
-    var r = (i / GRID_C) | 0;
-    var c = i % GRID_C;
-    return {
-      x: cellW * (c + 0.5),
-      y: gridTop + cellH * (r + 0.5)
-    };
-  }
+    best = parseInt(localStorage.getItem("goalkick_best") || "0", 10) || 0;
+  } catch (e) {}
 
   function resetGame() {
-    holes = [];
-    for (var i = 0; i < GRID_R * GRID_C; i++) {
-      var p = holeXY(i);
-      holes.push({
-        x: p.x,
-        y: p.y,
-        state: "empty",
-        type: null,
-        t: 0,
-        upDur: 1,
-        wasHit: false,
-        phase: Math.random() * Math.PI * 2
-      });
-    }
-
+    ball = { state: BALL_READY, x: ballStartX, y: ballStartY, vx: 0, vy: 0, spin: 0, power: 0 };
     particles = [];
     popups = [];
+    trail = [];
+
     score = 0;
     lives = 3;
-    whacked = 0;
+    goals = 0;
     streak = 0;
     bestStreak = 0;
     tier = 0;
@@ -397,12 +380,11 @@
     alive = true;
     tclock = 0;
     shake = 0;
-    flashRed = 0;
-    spawnTimer = 0.5;
 
-    levelWhacked = 0;
-    consecutiveMisses = 0;
-    levelTimer = TIERS[0].timeLimit;
+    resultText = "";
+    resultTimer = 0;
+    goalPhase = Math.random() * Math.PI * 2;
+    keeperPhase = Math.random() * Math.PI * 2;
 
     renderHeartsUI();
     updateHUDUI();
@@ -419,32 +401,22 @@
   }
 
   function updateHUDUI() {
-    var t = TIERS[tier];
-    scoreText.textContent = score;
-    levelNameText.textContent = "LVL " + t.lvl;
-
-    var secondsLeft = Math.max(0, Math.ceil(levelTimer));
-    timerText.textContent = secondsLeft + "s";
-    if (secondsLeft <= 8) {
-      timerPill.classList.add("warning");
-    } else {
-      timerPill.classList.remove("warning");
-    }
-
-    goalText.textContent = levelWhacked + " / " + t.target;
-    missText.textContent = consecutiveMisses + " / " + t.maxConsecutiveMisses + " 💨";
+    if (scoreText) scoreText.textContent = score;
+    if (tierNameText) tierNameText.textContent = "Lv. " + (tier + 1);
+    if (bestHudText) bestHudText.textContent = best;
   }
+
 
   function burstParticles(x, y, n, color, spread, power) {
     for (var i = 0; i < n; i++) {
-      var angle = Math.random() * Math.PI * 2;
-      var speed = Math.random() * power;
+      var a = Math.random() * Math.PI * 2;
+      var sp = Math.random() * power;
       particles.push({
         x: x + (Math.random() - 0.5) * spread,
         y: y + (Math.random() - 0.5) * spread,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 0.8,
-        r: 3 + Math.random() * 5,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 0.6,
+        r: 2 + Math.random() * 4,
         life: 1,
         decay: 0.02 + Math.random() * 0.025,
         color: color
@@ -452,243 +424,161 @@
     }
   }
 
-  function pickType(t) {
-    var r = Math.random();
-    if (r < t.bad) return "bad";
-    if (r < t.bad + t.gold) return "gold";
-    if (r < t.bad + t.gold + 0.15) return "kitty";
-    return "normal";
+  function goalCenterX() {
+    var t = TIERS[tier];
+    return W / 2 + Math.sin(tclock * t.spd + goalPhase) * t.amp;
+  }
+
+  function keeperOffsetX() {
+    var t = TIERS[tier];
+    if (!t.keeper) return null;
+    return Math.sin(tclock * t.kSpd + keeperPhase) * t.kRange;
   }
 
   /* --------------------------------------------------------------------------
-     6. High-Precision Touch & Hit Detection
+     6. Swipe Input & Shot Physics
      -------------------------------------------------------------------------- */
-  function creatureRise(h) {
-    var rise;
-    if (h.state === "rising") rise = h.t / 0.12;
-    else if (h.state === "up") rise = 1;
-    else if (h.state === "ducking") rise = 1 - h.t / 0.12;
-    else rise = Math.max(0, 1 - h.t / 0.30);
-    return Math.max(0, Math.min(1, rise));
+  var swipeStart = null;
+
+  function beginSwipe(x, y) {
+    if (state !== STATE_PLAY || !alive || ball.state !== BALL_READY) return;
+    swipeStart = { x: x, y: y, t: performance.now() };
   }
 
-  function creatureCenter(h) {
-    var rise = creatureRise(h);
-    var popH = cellH * 0.55 * rise;
-    return {
-      x: h.x,
-      y: h.y - popH * 0.5
-    };
+  function endSwipe(x, y) {
+    if (!swipeStart) return;
+    var dx = x - swipeStart.x;
+    var dy = y - swipeStart.y;
+    var dt_ms = Math.max(16, performance.now() - swipeStart.t);
+    swipeStart = null;
+
+    if (state !== STATE_PLAY || !alive || ball.state !== BALL_READY) return;
+    var dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 24 || dy > -12) return; // Too short or not an upward swipe
+
+    var speedFactor = Math.max(0.6, Math.min(2.2, 400 / dt_ms));
+    var vy0 = -Math.max(VY_MIN, Math.min(VY_MAX, Math.abs(dy) * SENS_Y * speedFactor));
+    var vx0 = Math.max(-VX_MAX, Math.min(VX_MAX, dx * SENS_X * speedFactor));
+
+    ball.state = BALL_FLIGHT;
+    ball.x = ballStartX;
+    ball.y = ballStartY;
+    ball.vx = vx0;
+    ball.vy = vy0;
+    ball.power = Math.abs(vy0);
+    trail = [];
+
+    sfx.kick();
   }
 
-  function tapAt(x, y) {
-    if (state !== STATE_PLAY || !alive) return;
+  /* --------------------------------------------------------------------------
+     7. Goal Resolution & Game Step
+     -------------------------------------------------------------------------- */
+  function resolveGoal() {
+    ball.state = BALL_RESULT;
+    resultTimer = 0.75;
+    goals++;
+    streak++;
+    bestStreak = Math.max(bestStreak, streak);
 
-    var hitTarget = null;
-    var minDist = Infinity;
+    var bonus = Math.min(10, Math.floor(streak / 5) * 2);
+    var screamer = ball.power > 820;
+    var pts = 1 + bonus + (screamer ? 2 : 0);
+    score += pts;
 
-    for (var i = 0; i < holes.length; i++) {
-      var h = holes[i];
-
-      if (h.state !== "up" && h.state !== "rising" && h.state !== "ducking") continue;
-      if (h.state === "ducking" && h.t > 0.08) continue;
-
-      var cPos = creatureCenter(h);
-      var dx = x - cPos.x;
-      var dy = y - cPos.y;
-      var dist = Math.sqrt(dx * dx + dy * dy);
-
-      var hitRadius = Math.min(cellW, cellH) * 0.48;
-
-      if (dist < hitRadius && dist < minDist) {
-        minDist = dist;
-        hitTarget = h;
-      }
-    }
-
-    if (!hitTarget) return;
-
-    hitTarget.state = "hit";
-    hitTarget.t = 0;
-    hitTarget.wasHit = true;
-
-    if (hitTarget.type === "bad") {
-      lives--;
-      streak = 0;
-      sfx.bad();
-      shake = Math.max(shake, 0.6);
-      flashRed = 1;
-      burstParticles(hitTarget.x, hitTarget.y, 18, "#ff4d4f", 24, 3.8);
-      popups.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 1, text: "-1 Heart 💔", color: "#ff4d4f" });
-
-      renderHeartsUI();
-      updateHUDUI();
-
-      if (lives <= 0) {
-        gameOverReason = "Ouch! Sneaky Raccoon bit you! 🦝";
-        triggerGameOver();
-      }
+    if (screamer) {
+      resultText = "SCREAMER! 🚀";
+      sfx.screamer();
     } else {
-      whacked++;
-      levelWhacked++;
-      streak++;
-      bestStreak = Math.max(bestStreak, streak);
-
-      // RESET CONSECUTIVE MISS STREAK ON SUCCESSFUL HIT
-      consecutiveMisses = 0;
-
-      var bonus = Math.floor(streak / 5) * 2;
-      if (hitTarget.type === "gold") {
-        var addedGold = 5 + bonus;
-        score += addedGold;
-        sfx.gold();
-        burstParticles(hitTarget.x, hitTarget.y, 24, "#ffc53d", 32, 4.5);
-        popups.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 1.2, text: "+" + addedGold + " 🐰⭐", color: "#faad14" });
-      } else if (hitTarget.type === "kitty") {
-        var addedKitty = 3 + bonus;
-        score += addedKitty;
-        sfx.gold();
-        burstParticles(hitTarget.x, hitTarget.y, 20, "#ff85c0", 28, 4.0);
-        popups.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 1.2, text: "+" + addedKitty + " 🐱💖", color: "#ff85c0" });
-      } else {
-        var addedNormal = 1 + bonus;
-        score += addedNormal;
-        sfx.whack();
-        burstParticles(hitTarget.x, hitTarget.y, 14, "#73d13d", 22, 3.2);
-        popups.push({ x: hitTarget.x, y: hitTarget.y - 30, life: 1.0, text: "+" + addedNormal, color: "#52c41a" });
-      }
-
-      if (streak > 0 && streak % 5 === 0) {
-        sfx.streak();
-        shake = Math.max(shake, 0.28);
-      }
-
-      var t = TIERS[tier];
-      if (levelWhacked >= t.target) {
-        advanceLevel();
-      } else {
-        updateHUDUI();
-      }
+      resultText = "GOAL! ⚽";
+      sfx.goal();
     }
-  }
 
-  function advanceLevel() {
-    if (tier < TIERS.length - 1) {
-      tier++;
+    shake = Math.max(shake, 0.4);
+    burstParticles(ball.x, ball.y, 30, "#52c41a", 32, 4.0);
+
+    // CRITICAL REQUIREMENT: Notifications regarding points MUST be displayed strictly ABOVE the goal post!
+    popups.push({ x: W / 2, y: goalY - 48, life: 1.2, text: "+" + pts + " PTS!", color: "#ffeb3b" });
+
+    if (streak > 0 && streak % 5 === 0) {
+      sfx.streak();
     }
-    var newT = TIERS[tier];
-    levelWhacked = 0;
-    consecutiveMisses = 0;
-    levelTimer = newT.timeLimit;
-    tierFlash = 1.4;
-    shake = Math.max(shake, 0.45);
-    sfx.levelUp();
-    burstParticles(W / 2, H * 0.4, 36, "#ffc53d", 70, 5.5);
-    popups.push({ x: W / 2, y: H * 0.35, life: 1.5, text: "LEVEL CLEARED! 🌟", color: "#73d13d" });
 
-    renderHeartsUI();
+    var newTier = tierOf(goals);
+    if (newTier > tier) {
+      tier = newTier;
+      tierFlash = 1.4;
+      sfx.levelup();
+      popups.push({ x: W / 2, y: goalY - 72, life: 1.5, text: TIERS[tier].name, color: "#73d13d" });
+    }
+
     updateHUDUI();
   }
 
-  function triggerGameOver() {
-    alive = false;
-    shake = 0.8;
-    sfx.gameOver();
+  function resolveMiss(kind) {
+    ball.state = BALL_RESULT;
+    resultTimer = 0.75;
+    streak = 0;
+    lives--;
 
-    setTimeout(function () {
-      showGameOverScreen();
-    }, 400);
-  }
+    resultText = kind === "wide" ? "WIDE! 💨" : (kind === "short" ? "TOO SOFT! 💨" : (kind === "saved" ? "SAVED! 🧤" : "MISS!"));
+    sfx.miss();
+    shake = Math.max(shake, 0.35);
+    burstParticles(ball.x, ball.y, 16, "#ff4d4f", 24, 3.0);
 
-  /* --------------------------------------------------------------------------
-     7. Game Loop & Physics Update
-     -------------------------------------------------------------------------- */
-  function activeCount() {
-    var count = 0;
-    for (var i = 0; i < holes.length; i++) {
-      if (holes[i].state !== "empty") count++;
+    renderHeartsUI();
+    updateHUDUI();
+
+    if (lives <= 0) {
+      resultTimer = 0.9;
     }
-    return count;
   }
 
   function stepGame(dt) {
     tclock += dt;
-    var t = TIERS[tier];
 
-    // Countdown Level Timer
-    levelTimer -= dt;
-    if (levelTimer <= 0) {
-      levelTimer = 0;
-      if (levelWhacked >= t.target) {
-        advanceLevel();
-      } else {
-        gameOverReason = "Time's Up! Missed level goal! ⏱️";
-        triggerGameOver();
-        return;
-      }
-    }
-    updateHUDUI();
+    if (ball.state === BALL_FLIGHT) {
+      trail.push({ x: ball.x, y: ball.y, life: 1 });
+      if (trail.length > 16) trail.shift();
 
-    // Spawn cute animals
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && activeCount() < t.maxC) {
-      var empties = [];
-      for (var i = 0; i < holes.length; i++) {
-        if (holes[i].state === "empty") empties.push(holes[i]);
-      }
-      if (empties.length > 0) {
-        var pickHole = empties[(Math.random() * empties.length) | 0];
-        pickHole.state = "rising";
-        pickHole.t = 0;
-        pickHole.wasHit = false;
-        pickHole.type = pickType(t);
-        pickHole.upDur = t.up[0] + Math.random() * (t.up[1] - t.up[0]);
-        spawnTimer = t.gap[0] + Math.random() * (t.gap[1] - t.gap[0]);
-      } else {
-        spawnTimer = 0.15;
-      }
-    }
+      var prevY = ball.y;
+      ball.vy += GRAVITY * dt;
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
 
-    // Update hole animals & track 3 CONSECUTIVE misses
-    for (var j = 0; j < holes.length; j++) {
-      var h = holes[j];
-      h.t += dt;
+      if (ball.x < -30 || ball.x > W + 30) {
+        resolveMiss("wide");
+      } else if (prevY > goalBandBottom && ball.y <= goalBandBottom) {
+        var t = TIERS[tier];
+        var gCenter = goalCenterX();
+        var inGoal = Math.abs(ball.x - gCenter) <= t.halfW;
 
-      if (h.state === "rising" && h.t >= 0.12) {
-        h.state = "up";
-        h.t = 0;
-      } else if (h.state === "up" && h.t >= h.upDur) {
-        h.state = "ducking";
-        h.t = 0;
-      } else if (h.state === "ducking" && h.t >= 0.12) {
-        // Check if a friendly animal escaped unhit
-        if (!h.wasHit && h.type !== "bad") {
-          consecutiveMisses++;
-          sfx.miss();
-          popups.push({ x: h.x, y: h.y - 24, life: 0.8, text: "Missed! (" + consecutiveMisses + "/3) 💨", color: "#ff7a45" });
-
-          // 3 CONSECUTIVE MISSES PENALTY
-          if (consecutiveMisses >= t.maxConsecutiveMisses) {
-            lives--;
-            consecutiveMisses = 0;
-            shake = Math.max(shake, 0.6);
-            flashRed = 1;
-            sfx.bad();
-            popups.push({ x: h.x, y: h.y - 42, life: 1.2, text: "3 Misses in a row! -1 Heart 💔", color: "#ff4d4f" });
-            renderHeartsUI();
-
-            if (lives <= 0) {
-              gameOverReason = "3 Consecutive Misses! 💨";
-              triggerGameOver();
-              return;
-            }
+        if (!inGoal) {
+          resolveMiss("wide");
+        } else if (t.keeper) {
+          var kOff = keeperOffsetX();
+          var keeperX = gCenter + kOff;
+          if (Math.abs(ball.x - keeperX) < 18) {
+            resolveMiss("saved");
+          } else {
+            resolveGoal();
           }
+        } else {
+          resolveGoal();
         }
-        h.state = "empty";
-        h.type = null;
-      } else if (h.state === "hit" && h.t >= 0.30) {
-        h.state = "empty";
-        h.type = null;
+      } else if (ball.vy > 0 && ball.y >= ballStartY - 4) {
+        resolveMiss("short");
+      } else if (ball.y > H + 60) {
+        resolveMiss("short");
+      }
+    } else if (ball.state === BALL_RESULT) {
+      resultTimer -= dt;
+      if (resultTimer <= 0) {
+        if (lives <= 0) return triggerGameOver();
+        ball.state = BALL_READY;
+        ball.x = ballStartX;
+        ball.y = ballStartY;
+        trail = [];
       }
     }
 
@@ -697,247 +587,740 @@
       var pt = particles[p];
       pt.x += pt.vx * dt * 60;
       pt.y += pt.vy * dt * 60;
-      pt.vy += 0.22 * dt * 60;
+      pt.vy += 0.2 * dt * 60;
       pt.life -= pt.decay * dt * 60;
       if (pt.life <= 0) particles.splice(p, 1);
     }
 
-    // Update floating popups
+    // Update popups (float UPWARDS strictly above goal post)
     for (var u = popups.length - 1; u >= 0; u--) {
-      popups[u].y -= 0.8 * dt * 60;
+      popups[u].y -= 0.9 * dt * 60;
       popups[u].life -= 0.022 * dt * 60;
       if (popups[u].life <= 0) popups.splice(u, 1);
     }
 
+    for (var tr = trail.length - 1; tr >= 0; tr--) {
+      trail[tr].life -= 1.8 * dt;
+      if (trail[tr].life <= 0) trail.splice(tr, 1);
+    }
+
     if (shake > 0) shake = Math.max(0, shake - 2.5 * dt);
-    if (flashRed > 0) flashRed = Math.max(0, flashRed - 2 * dt);
-    if (tierFlash > 0) tierFlash = Math.max(0, tierFlash - 0.6 * dt);
+    if (tierFlash > 0) tierFlash = Math.max(0, tierFlash - 0.5 * dt);
   }
 
   function ambientStep(dt) {
     tclock += dt;
-    spawnTimer -= dt;
-    if (spawnTimer <= 0 && activeCount() < 1) {
-      var empties = [];
-      for (var i = 0; i < holes.length; i++) if (holes[i].state === "empty") empties.push(holes[i]);
-      if (empties.length > 0) {
-        var h = empties[(Math.random() * empties.length) | 0];
-        h.state = "rising";
-        h.t = 0;
-        h.type = (Math.random() > 0.4) ? "gold" : "normal";
-        h.upDur = 1.2;
-        spawnTimer = 1.0;
-      }
+    for (var p = particles.length - 1; p >= 0; p--) {
+      var pt = particles[p];
+      pt.x += pt.vx * dt * 60;
+      pt.y += pt.vy * dt * 60;
+      pt.life -= pt.decay * dt * 60;
+      if (pt.life <= 0) particles.splice(p, 1);
     }
-    for (var j = 0; j < holes.length; j++) {
-      var hh = holes[j];
-      hh.t += dt;
-      if (hh.state === "rising" && hh.t >= 0.12) { hh.state = "up"; hh.t = 0; }
-      else if (hh.state === "up" && hh.t >= hh.upDur) { hh.state = "ducking"; hh.t = 0; }
-      else if (hh.state === "ducking" && hh.t >= 0.12) { hh.state = "empty"; hh.type = null; }
-    }
+    if (shake > 0) shake = Math.max(0, shake - 2.5 * dt);
+  }
+
+  function triggerGameOver() {
+    alive = false;
+    shake = 0.8;
+    sfx.gameOver();
+    setTimeout(showGameOverScreen, 400);
   }
 
   /* --------------------------------------------------------------------------
-     8. Child-Friendly Canvas Rendering Engine
+     8. Child-Friendly Canvas Stadium Renderer (Matching Image)
      -------------------------------------------------------------------------- */
-  function drawHole(h) {
-    var hw = cellW * 0.42;
-    var hh = cellH * 0.22;
 
-    // Ground Hole Outer Shadow
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.beginPath();
-    ctx.ellipse(h.x, h.y + cellH * 0.10, hw * 1.05, hh * 1.05, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Earthy Burrow Rim
-    var g = ctx.createRadialGradient(h.x, h.y, 4, h.x, h.y, hw);
-    g.addColorStop(0, "#8c532b");
-    g.addColorStop(0.7, "#5e3619");
-    g.addColorStop(1, "#3d220f");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.ellipse(h.x, h.y, hw, hh, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Dark Inner Hole Depth
-    ctx.fillStyle = "#1c0d05";
-    ctx.beginPath();
-    ctx.ellipse(h.x, h.y, hw * 0.76, hh * 0.65, 0, 0, Math.PI * 2);
-    ctx.fill();
+  function drawRoundRect(ctx, x, y, w, h, r) {
+    if (ctx.roundRect) {
+      ctx.roundRect(x, y, w, h, r);
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
   }
 
-  function drawCreature(h) {
-    if (h.state === "empty") return;
+  function drawPlaygroundBushesAndTrees() {
+    ctx.save();
 
-    var rise = creatureRise(h);
-    var popH = cellH * 0.58 * rise;
-    var cx = h.x;
-    var cy = h.y - popH * 0.5;
-    var squish = h.state === "hit" ? Math.min(1, h.t / 0.15) : 0;
+    // 1. Far Left Playground Tree
+    ctx.fillStyle = "#5d4037"; // Tree Trunk
+    ctx.fillRect(8, goalY - 85, 14, 55);
+    // Tree Leaves (puffy green circles)
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(15, goalY - 95, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#43a047";
+    ctx.beginPath(); ctx.arc(10, goalY - 100, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.arc(22, goalY - 105, 16, 0, Math.PI * 2); ctx.fill();
+
+    // 2. Far Right Playground Tree
+    ctx.fillStyle = "#5d4037"; // Tree Trunk
+    ctx.fillRect(W - 22, goalY - 85, 14, 55);
+    // Tree Leaves
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(W - 15, goalY - 95, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#43a047";
+    ctx.beginPath(); ctx.arc(W - 10, goalY - 100, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.arc(W - 22, goalY - 105, 16, 0, Math.PI * 2); ctx.fill();
+
+    // 3. Continuous Lush Green Bushes Hedge behind goal line (Matches image bushes!)
+    var bushY = goalY - 26;
+    var bushColors = ["#1b5e20", "#2e7d32", "#388e3c", "#4caf50"];
+    
+    // Bottom Layer Bushes (Dark Green)
+    for (var b1 = -10; b1 < W + 20; b1 += 32) {
+      ctx.fillStyle = bushColors[0];
+      ctx.beginPath(); ctx.arc(b1, bushY, 26, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Mid Layer Bushes (Medium Green)
+    for (var b2 = 5; b2 < W + 20; b2 += 28) {
+      ctx.fillStyle = bushColors[1];
+      ctx.beginPath(); ctx.arc(b2, bushY - 5, 22, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Top Layer Bushes (Bright Green)
+    for (var b3 = 18; b3 < W; b3 += 35) {
+      ctx.fillStyle = bushColors[2];
+      ctx.beginPath(); ctx.arc(b3, bushY - 10, 18, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = bushColors[3];
+      ctx.beginPath(); ctx.arc(b3 - 4, bushY - 14, 12, 0, Math.PI * 2); ctx.fill();
+
+      // Flower blossoms 🌼 on playground bushes
+      if (b3 % 3 === 0) {
+        ctx.fillStyle = "#ffeb3b";
+        ctx.beginPath(); ctx.arc(b3, bushY - 18, 3.5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(b3 - 3, bushY - 18, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(b3 + 3, bushY - 18, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(b3, bushY - 21, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  function drawForegroundPlaygroundGrass() {
+    ctx.save();
+    
+    // Bottom Left Corner Bush & Grass Blades
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(-10, H + 10, 50, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#4caf50";
+    ctx.beginPath(); ctx.arc(-5, H + 5, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#81c784";
+    ctx.beginPath(); ctx.arc(-2, H, 26, 0, Math.PI * 2); ctx.fill();
+
+    // Grass blades pointing up on bottom left
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.moveTo(10, H); ctx.lineTo(16, H - 25); ctx.lineTo(24, H); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(22, H); ctx.lineTo(30, H - 32); ctx.lineTo(38, H); ctx.fill();
+
+    // Bottom Right Corner Bush & Grass Blades
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.arc(W + 10, H + 10, 50, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#4caf50";
+    ctx.beginPath(); ctx.arc(W + 5, H + 5, 38, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#81c784";
+    ctx.beginPath(); ctx.arc(W + 2, H, 26, 0, Math.PI * 2); ctx.fill();
+
+    // Grass blades pointing up on bottom right
+    ctx.fillStyle = "#66bb6a";
+    ctx.beginPath(); ctx.moveTo(W - 38, H); ctx.lineTo(W - 30, H - 32); ctx.lineTo(W - 22, H); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(W - 24, H); ctx.lineTo(W - 16, H - 25); ctx.lineTo(W - 10, H); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawStadiumBackground() {
+    // 1. Sky Gradient (Sunny Sky behind goal)
+    var skyGrad = ctx.createLinearGradient(0, 0, 0, goalY);
+    skyGrad.addColorStop(0, "#1e90ff");
+    skyGrad.addColorStop(0.6, "#70e0ff");
+    skyGrad.addColorStop(1, "#b3f0ff");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, goalY);
+
+    // 2. Fluffy White Sky Clouds
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    ctx.beginPath(); ctx.arc(40, 30, 22, 0, Math.PI * 2); ctx.arc(65, 25, 28, 0, Math.PI * 2); ctx.arc(90, 32, 20, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 80, 35, 20, 0, Math.PI * 2); ctx.arc(W - 55, 28, 25, 0, Math.PI * 2); ctx.arc(W - 30, 36, 18, 0, Math.PI * 2); ctx.fill();
+
+    // Floating Confetti & Star Sparkles (Matches Image atmosphere)
+    var confettiColors = ["#ff4d4f", "#ffec3d", "#4096ff", "#73d13d", "#ff85c0"];
+    for (var f = 0; f < 18; f++) {
+      var fx = (f * 25 + Math.sin(tclock + f) * 10) % W;
+      var fy = (f * 15 + Math.cos(tclock * 0.8 + f) * 8) % (goalY - 10);
+      ctx.fillStyle = confettiColors[f % confettiColors.length];
+      if (f % 3 === 0) {
+        ctx.font = "10px Fredoka, sans-serif";
+        ctx.fillText("⭐", fx, fy);
+      } else {
+        ctx.fillRect(fx, fy, 4, 6);
+      }
+    }
+
+    // 3. Stadium Floodlight Towers (Matches Image)
+    ctx.fillStyle = "#a6b9d0";
+    ctx.fillRect(18, 12, 6, 65);
+    ctx.fillRect(W - 24, 12, 6, 65);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(21, 12, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 21, 12, 10, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffeb3b";
+    ctx.beginPath(); ctx.arc(21, 12, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(W - 21, 12, 6, 0, Math.PI * 2); ctx.fill();
+
+    // 4. Stadium Stand & Spectator Crowd Wall
+    ctx.fillStyle = "#2c3e50";
+    ctx.fillRect(0, goalY - 55, W, 25);
+    
+    // Colorful spectator crowd dots & flags
+    var crowdColors = ["#ff4d4f", "#4096ff", "#ffc53d", "#73d13d", "#ff85c0", "#9254de"];
+    for (var c = 10; c < W; c += 14) {
+      ctx.fillStyle = crowdColors[(c / 14 | 0) % crowdColors.length];
+      ctx.beginPath(); ctx.arc(c, goalY - 45, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Background Digital Scoreboard (Matches Image "0:0" Board)
+    ctx.fillStyle = "#0c182b";
+    ctx.strokeStyle = "#ffcc00";
+    ctx.lineWidth = 1.8;
+    drawRoundRect(ctx, W / 2 - 26, goalY - 60, 52, 20, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.font = "900 11px Fredoka, sans-serif";
+    ctx.fillStyle = "#ffeb3b";
+    ctx.textAlign = "center";
+    ctx.fillText(score + " : " + goals, W / 2, goalY - 46);
+
+    // 5. Lush Playground Bushes & Trees Layer
+    drawPlaygroundBushesAndTrees();
+
+    // 6. Pitch Field & Grass Stripes
+    var pitchGrad = ctx.createLinearGradient(0, goalY, 0, H);
+    pitchGrad.addColorStop(0, "#43a047");
+    pitchGrad.addColorStop(0.5, "#2e7d32");
+    pitchGrad.addColorStop(1, "#1b5e20");
+    ctx.fillStyle = pitchGrad;
+    ctx.fillRect(0, goalY, W, H - goalY);
+
+    ctx.fillStyle = "rgba(255,255,255,0.07)";
+    for (var i = 0; i < 7; i++) {
+      if (i % 2 === 0) ctx.fillRect(0, goalY + i * ((H - goalY) / 7), W, (H - goalY) / 7);
+    }
+
+    // 7. White Penalty Box Lines & Arc
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(W * 0.12, goalY - 28, W * 0.76, H * 0.54);
+    ctx.beginPath(); ctx.arc(W / 2, ballStartY, 52, Math.PI, 0); ctx.stroke();
+    
+    // Penalty Spot Dot & Kick Grass Burst
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath(); ctx.arc(W / 2, ballStartY, 4, 0, Math.PI * 2); ctx.fill();
+
+    // Grass Energy Burst at Kick Spot (Matches bottom-left of ball in image!)
+    ctx.fillStyle = "rgba(255, 235, 59, 0.45)";
+    ctx.beginPath(); ctx.ellipse(ballStartX - 15, ballStartY + 12, 24, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffeb3b";
+    for (var b = 0; b < 6; b++) {
+      var ba = b * (Math.PI / 3);
+      ctx.beginPath();
+      ctx.arc(ballStartX - 15 + Math.cos(ba) * 14, ballStartY + 12 + Math.sin(ba) * 5, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+
+
+  function drawGoal() {
+    var t = TIERS[tier];
+    var gx = goalCenterX();
+    var left = gx - t.halfW;
+    var right = gx + t.halfW;
 
     ctx.save();
-    // Clip character inside the hole bounds
+
+    // Goal Post Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
     ctx.beginPath();
-    ctx.rect(h.x - cellW * 0.5, h.y - cellH * 0.75, cellW, cellH * 0.75 + 3);
-    ctx.clip();
+    drawRoundRect(ctx, left - 4, goalBandBottom + 2, (right - left) + 8, 6, 3);
+    ctx.fill();
 
-    ctx.translate(cx, cy);
-    ctx.scale(1 + squish * 0.35, 1 - squish * 0.5);
+    // Metallic Goal Posts & Top Crossbar (Crossbar top at goalY - 32)
+    ctx.strokeStyle = "#e8ecef";
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(left, goalY - 32); ctx.lineTo(left, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(right, goalY - 32); ctx.lineTo(right, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, goalY - 32); ctx.lineTo(right, goalY - 32); ctx.stroke();
 
-    var bob = h.state === "up" ? Math.sin(tclock * 6 + h.phase) * 3 : 0;
-    ctx.translate(0, bob);
+    // Inner Post Highlight
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(left - 1, goalY - 32); ctx.lineTo(left - 1, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(right + 1, goalY - 32); ctx.lineTo(right + 1, goalBandBottom + 6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(left, goalY - 33); ctx.lineTo(right, goalY - 33); ctx.stroke();
 
-    var r = Math.min(cellW, cellH) * 0.28;
-    var isBad = h.type === "bad";
-    var isGold = h.type === "gold";
-    var isKitty = h.type === "kitty";
+    // Rainbow Accent Bar on top of Crossbar (Matches Image)
+    var barY = goalY - 39;
+    var barH = 5;
+    var rColors = ["#ff4d4f", "#ff9c6e", "#ffec3d", "#73d13d", "#4096ff", "#9254de"];
+    var segW = (right - left) / rColors.length;
+    for (var c = 0; c < rColors.length; c++) {
+      ctx.fillStyle = rColors[c];
+      ctx.fillRect(left + c * segW, barY, segW, barH);
+    }
 
-    // ------------------- EARS -------------------
-    if (isBad) {
-      // Cheeky Raccoon ears
-      ctx.fillStyle = "#434343";
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.6, -r * 0.5); ctx.lineTo(-r * 0.95, -r * 1.15); ctx.lineTo(-r * 0.2, -r * 0.8);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.6, -r * 0.5); ctx.lineTo(r * 0.95, -r * 1.15); ctx.lineTo(r * 0.2, -r * 0.8);
-      ctx.fill();
+    // White Net Grid Pattern
+    ctx.strokeStyle = "rgba(255,255,255,0.38)";
+    ctx.lineWidth = 1.5;
+    var cols = Math.max(5, Math.round((right - left) / 14));
+    for (var i = 1; i < cols; i++) {
+      var nx = left + (right - left) * i / cols;
+      ctx.beginPath(); ctx.moveTo(nx, goalY - 32); ctx.lineTo(nx, goalBandBottom + 6); ctx.stroke();
+    }
+    var rows = 5;
+    for (var j = 1; j < rows; j++) {
+      var ny = (goalY - 32) + ((goalBandBottom + 6) - (goalY - 32)) * j / rows;
+      ctx.beginPath(); ctx.moveTo(left, ny); ctx.lineTo(right, ny); ctx.stroke();
+    }
 
-      ctx.fillStyle = "#ffadd2";
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.55, -r * 0.55); ctx.lineTo(-r * 0.85, -r * 1.05); ctx.lineTo(-r * 0.25, -r * 0.75);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.55, -r * 0.55); ctx.lineTo(r * 0.85, -r * 1.05); ctx.lineTo(r * 0.25, -r * 0.75);
-      ctx.fill();
-    } else if (isGold) {
-      // Golden Bunny Tall Ears
+    // Goalkeeper Kid inside Goal 👦🧤 (Matches Image Right Character)
+    if (t.keeper) {
+      var kOff = keeperOffsetX();
+      var kx = gx + kOff;
+      var ky = goalY + 8;
+      drawHumanKeeper(kx, ky);
+    }
+
+    ctx.restore();
+  }
+
+  function drawHumanKeeper(kx, ky) {
+    ctx.save();
+    ctx.translate(kx, ky);
+
+    // Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.beginPath(); ctx.ellipse(0, 18, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Goalie Legs & Cleats
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(-8, 10, 5, 10);
+    ctx.fillRect(3, 10, 5, 10);
+    ctx.fillStyle = "#2e7d32";
+    ctx.fillRect(-9, 17, 7, 4);
+    ctx.fillRect(2, 17, 7, 4);
+
+    // Goalie Shorts
+    ctx.fillStyle = "#1b5e20";
+    ctx.fillRect(-10, 4, 20, 8);
+
+    // Goalie Green Jersey #1 (Matches Image Right Goalie)
+    ctx.fillStyle = "#2e7d32";
+    ctx.beginPath(); ctx.ellipse(0, 0, 13, 14, 0, 0, Math.PI * 2); ctx.fill();
+    
+    // Barcelona style chest crest badge
+    ctx.fillStyle = "#ffeb3b";
+    ctx.beginPath(); ctx.arc(0, -2, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#2e7d32";
+    ctx.font = "700 8px Fredoka, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("1", 0, 1);
+
+    var wasSaved = ball.state === BALL_RESULT && resultText.indexOf("SAVED") >= 0;
+    var wasScored = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
+
+    // Goalie Arms & Patterned Gloves (Matches Image)
+    if (wasSaved) {
+      // Cheerful Goalie Save pose (Hands up high!) 🧤🎉
+      ctx.fillStyle = "#2e7d32";
+      ctx.fillRect(-16, -14, 5, 12);
+      ctx.fillRect(11, -14, 5, 12);
+
+      // Patterned Gloves (Green with Orange & Yellow Grip Pads)
+      ctx.fillStyle = "#73d13d";
+      ctx.beginPath(); ctx.arc(-14, -16, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -16, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#ff7a45";
+      ctx.beginPath(); ctx.arc(-14, -16, 3.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(14, -16, 3.5, 0, Math.PI * 2); ctx.fill();
+    } else {
+      var armWave = Math.sin(tclock * 6) * 3;
+      ctx.fillStyle = "#2e7d32";
+      ctx.fillRect(-16, -6, 5, 10);
+      ctx.fillRect(11, -6, 5, 10);
+
+      // Patterned Gloves
+      ctx.fillStyle = "#73d13d";
+      ctx.beginPath(); ctx.arc(-15, 6 + armWave, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(15, 6 - armWave, 6.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = "#ffc53d";
-      ctx.beginPath();
-      ctx.ellipse(-r * 0.45, -r * 1.1, r * 0.22, r * 0.55, -0.15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(r * 0.45, -r * 1.1, r * 0.22, r * 0.55, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#ffadd2";
-      ctx.beginPath();
-      ctx.ellipse(-r * 0.45, -r * 1.1, r * 0.12, r * 0.4, -0.15, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(r * 0.45, -r * 1.1, r * 0.12, r * 0.4, 0.15, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (isKitty) {
-      // Cute Kitty Ears
-      ctx.fillStyle = "#ff85c0";
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.5, -r * 0.5); ctx.lineTo(-r * 0.85, -r * 1.1); ctx.lineTo(-r * 0.15, -r * 0.8);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(r * 0.5, -r * 0.5); ctx.lineTo(r * 0.85, -r * 1.1); ctx.lineTo(r * 0.15, -r * 0.8);
-      ctx.fill();
-    } else {
-      // Happy Hamster Ears
-      ctx.fillStyle = "#fa8c16";
-      ctx.beginPath(); ctx.arc(-r * 0.75, -r * 0.65, r * 0.32, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 0.75, -r * 0.65, r * 0.32, 0, Math.PI * 2); ctx.fill();
-
-      ctx.fillStyle = "#ffadd2";
-      ctx.beginPath(); ctx.arc(-r * 0.75, -r * 0.65, r * 0.18, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 0.75, -r * 0.65, r * 0.18, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-15, 6 + armWave, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(15, 6 - armWave, 3, 0, Math.PI * 2); ctx.fill();
     }
 
-    // ------------------- HEAD -------------------
-    var headGrad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, 2, 0, 0, r * 1.1);
-    if (isBad) {
-      headGrad.addColorStop(0, "#a6a6a6");
-      headGrad.addColorStop(1, "#595959");
-    } else if (isGold) {
-      headGrad.addColorStop(0, "#fff1b8");
-      headGrad.addColorStop(1, "#ffc53d");
-    } else if (isKitty) {
-      headGrad.addColorStop(0, "#ffd6e7");
-      headGrad.addColorStop(1, "#ff85c0");
-    } else {
-      headGrad.addColorStop(0, "#ffe7ba");
-      headGrad.addColorStop(1, "#fa8c16");
-    }
-    ctx.fillStyle = headGrad;
-    ctx.beginPath();
-    ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fill();
+    // Goalie Head & Skin
+    ctx.fillStyle = "#ffe0c2";
+    ctx.beginPath(); ctx.arc(0, -15, 11, 0, Math.PI * 2); ctx.fill();
 
-    // ------------------- CHEEKS / MASK -------------------
-    if (isBad) {
-      // Raccoon Bandit Mask
+    // Brown Hair
+    ctx.fillStyle = "#4a2c11";
+    ctx.beginPath(); ctx.arc(0, -18, 11.5, Math.PI, 0); ctx.fill();
+    ctx.fillRect(-11, -21, 22, 6);
+
+    // Goalie Face Expressions
+    if (wasScored) {
+      // Surprised / Dizzy Eyes when Goal is conceded (Matches image goalie expression!)
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-4, -14, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#111111";
+      ctx.beginPath(); ctx.arc(-4, -14, 1.2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 1.2, 0, Math.PI * 2); ctx.fill();
+
+      // Wide open surprised mouth! 😮
       ctx.fillStyle = "#262626";
-      ctx.beginPath();
-      ctx.ellipse(0, -r * 0.08, r * 0.85, r * 0.38, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Cute Muzzle / Belly
-      ctx.fillStyle = "#ffffff";
-      ctx.beginPath();
-      ctx.ellipse(0, r * 0.28, r * 0.65, r * 0.45, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(0, -8, 3.5, 0, Math.PI * 2); ctx.fill();
+    } else if (wasSaved) {
+      // Big Cheerful Save Smile!
+      ctx.fillStyle = "#262626";
+      ctx.beginPath(); ctx.arc(-4, -14, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 2, 0, Math.PI * 2); ctx.fill();
 
-      // Rosy Pink Cheeks
-      ctx.fillStyle = "rgba(255, 120, 117, 0.65)";
-      ctx.beginPath(); ctx.arc(-r * 0.58, r * 0.15, r * 0.2, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 0.58, r * 0.15, r * 0.2, 0, Math.PI * 2); ctx.fill();
-    }
-
-    // ------------------- EYES -------------------
-    if (squish > 0.3) {
-      // Dizzy star/X eyes when whacked
-      ctx.strokeStyle = isBad ? "#ff4d4f" : "#262626";
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = "round";
-
+      ctx.strokeStyle = "#278003";
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.moveTo(-r * 0.45, -r * 0.25); ctx.lineTo(-r * 0.2, -r * 0.05);
-      ctx.moveTo(-r * 0.2, -r * 0.25); ctx.lineTo(-r * 0.45, -r * 0.05);
-      ctx.stroke();
-
-      ctx.beginPath();
-      ctx.moveTo(r * 0.2, -r * 0.25); ctx.lineTo(r * 0.45, -r * 0.05);
-      ctx.moveTo(r * 0.45, -r * 0.25); ctx.lineTo(r * 0.2, -r * 0.05);
+      ctx.arc(0, -10, 4, 0.1, Math.PI - 0.1);
       ctx.stroke();
     } else {
-      // Big expressive anime eyes
-      ctx.fillStyle = isBad ? "#ff4d4f" : "#1f1f1f";
-      ctx.beginPath(); ctx.arc(-r * 0.34, -r * 0.12, r * 0.18, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 0.34, -r * 0.12, r * 0.18, 0, Math.PI * 2); ctx.fill();
+      // Cheerful Normal Eyes
+      ctx.fillStyle = "#262626";
+      ctx.beginPath(); ctx.arc(-4, -14, 2, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(4, -14, 2, 0, Math.PI * 2); ctx.fill();
 
-      // Eye Sparkle Highlights
       ctx.fillStyle = "#ffffff";
-      ctx.beginPath(); ctx.arc(-r * 0.38, -r * 0.18, r * 0.07, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(r * 0.30, -r * 0.18, r * 0.07, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(-4.8, -14.8, 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(3.2, -14.8, 0.8, 0, Math.PI * 2); ctx.fill();
+
+      ctx.strokeStyle = "#8c4d15";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, -10, 3.5, 0.1, Math.PI - 0.1);
+      ctx.stroke();
     }
 
-    // ------------------- NOSE & MOUTH -------------------
-    ctx.fillStyle = isBad ? "#000000" : "#ff85c0";
+    // Rosy Cheeks
+    ctx.fillStyle = "rgba(255, 120, 117, 0.6)";
+    ctx.beginPath(); ctx.arc(-7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7, -11, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawHumanKicker() {
+    ctx.save();
+
+    var isGoalScored = ball.state === BALL_RESULT && (resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0);
+    var isGoalLost = ball.state === BALL_RESULT && !isGoalScored;
+
+    // Position kicker behind/beside penalty spot (Left Kid Striker matching image)
+    var kx = ballStartX - 28;
+    var ky = ballStartY + 8;
+    var kickSwing = 0;
+
+    if (ball.state === BALL_FLIGHT) {
+      // Follow through pose during shot flight
+      kickSwing = Math.min(1, (performance.now() - (swipeStart ? swipeStart.t : 0)) / 200);
+      kx = ballStartX - 18 + kickSwing * 14;
+      ky = ballStartY + 4 - kickSwing * 6;
+    } else if (isGoalScored) {
+      // Cheering stance after Goal
+      kx = ballStartX - 18;
+      ky = ballStartY + 2;
+    } else if (isGoalLost) {
+      // Sad stance
+      kx = ballStartX - 24;
+      ky = ballStartY + 10;
+    }
+
+    ctx.translate(kx, ky);
+
+    // Kicker Shadow
+    ctx.fillStyle = "rgba(0,0,0,0.24)";
+    ctx.beginPath(); ctx.ellipse(0, 16, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Kicking Leg & Standing Leg
+    ctx.strokeStyle = "#ffd8b8";
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+
+    if (ball.state === BALL_FLIGHT) {
+      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-8, 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(14, 10); ctx.stroke();
+
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(-12, 14, 7, 4);
+      ctx.fillRect(12, 8, 7, 4);
+    } else {
+      ctx.beginPath(); ctx.moveTo(-4, 6); ctx.lineTo(-6, 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(4, 6); ctx.lineTo(6, 16); ctx.stroke();
+
+      // Black Cleats
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(-10, 14, 7, 4);
+      ctx.fillRect(2, 14, 7, 4);
+    }
+
+    // Red & Blue Striped FC Barcelona Jersey (Matches Left Kid in Image)
+    ctx.fillStyle = "#1565c0"; // Blue Jersey base
+    ctx.beginPath(); ctx.ellipse(0, -6, 12, 14, 0, 0, Math.PI * 2); ctx.fill();
+
+    // Red Vertical Stripes (#c62828)
+    ctx.fillStyle = "#c62828";
+    ctx.fillRect(-8, -18, 4, 24);
+    ctx.fillRect(4, -18, 4, 24);
+
+    // Yellow #7 on Chest
+    ctx.fillStyle = "#ffeb3b";
+    ctx.font = "900 10px Fredoka, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("7", 0, -3);
+
+    // Blue Shorts
+    ctx.fillStyle = "#1565c0";
+    ctx.fillRect(-9, 1, 18, 7);
+
+    // Arms Stance
+    ctx.fillStyle = "#c62828";
+    if (isGoalScored) {
+      ctx.fillRect(-14, -18, 4, 10);
+      ctx.fillRect(10, -18, 4, 10);
+      ctx.fillStyle = "#ffd8b8";
+      ctx.beginPath(); ctx.arc(-12, -19, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(12, -19, 3, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.fillRect(-15, -10, 4, 9);
+      ctx.fillRect(11, -10, 4, 9);
+      ctx.fillStyle = "#ffd8b8";
+      ctx.beginPath(); ctx.arc(-13, -1, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(13, -1, 3, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // Head Position
+    var headY = isGoalLost ? -18 : -20;
+    ctx.fillStyle = "#ffd8b8";
+    ctx.beginPath(); ctx.arc(0, headY, 11, 0, Math.PI * 2); ctx.fill();
+
+    // Messy Brown Anime Hair (Matches Image Striker Kid)
+    ctx.fillStyle = "#5d3a1a";
+    ctx.beginPath(); ctx.arc(0, headY - 2, 11.5, Math.PI, 0); ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(0, r * 0.16, r * 0.12, r * 0.08, 0, 0, Math.PI * 2);
+    ctx.moveTo(-11, headY - 4); ctx.lineTo(-6, headY - 10); ctx.lineTo(-1, headY - 5); ctx.lineTo(4, headY - 10); ctx.lineTo(10, headY - 4);
     ctx.fill();
 
-    // Cute Smile
-    ctx.strokeStyle = "#595959";
-    ctx.lineWidth = 2;
+    // Kicker Face Expression
+    if (isGoalLost) {
+      ctx.strokeStyle = "#3a1d00";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-6, headY - 2); ctx.lineTo(-2, headY); ctx.lineTo(-6, headY + 2);
+      ctx.moveTo(6, headY - 2); ctx.lineTo(2, headY); ctx.lineTo(6, headY + 2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "#8c1515";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, headY + 7, 3.5, Math.PI + 0.2, Math.PI * 2 - 0.2);
+      ctx.stroke();
+    } else {
+      // Big Cheerful Smile
+      ctx.fillStyle = "#262626";
+      ctx.beginPath(); ctx.arc(-3.5, headY + 1, 1.8, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(3.5, headY + 1, 1.8, 0, Math.PI * 2); ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath(); ctx.arc(-4.2, headY + 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(2.7, headY + 0.4, 0.7, 0, Math.PI * 2); ctx.fill();
+
+      ctx.strokeStyle = "#a05010";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.arc(0, headY + 4, 3.5, 0.1, Math.PI - 0.1);
+      ctx.stroke();
+    }
+
+    // Rosy Cheeks
+    ctx.fillStyle = "rgba(255, 120, 117, 0.6)";
+    ctx.beginPath(); ctx.arc(-6, headY + 3, 2.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6, headY + 3, 2.5, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
+  }
+
+  function drawBall() {
+    if (ball.state === BALL_RESULT && resultTimer < 0.35) return;
+
+    // Rainbow energy trail with stars
+    var rainbowColors = ["#ff4d4f", "#ff9c6e", "#ffec3d", "#73d13d", "#4096ff", "#9254de"];
+    for (var i = 0; i < trail.length; i++) {
+      var tr = trail[i];
+      var col = rainbowColors[i % rainbowColors.length];
+      ctx.globalAlpha = Math.max(0, tr.life) * 0.75;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(tr.x, tr.y, 8 * (i / trail.length) + 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Star sparkle on rainbow trail
+      if (i % 3 === 0) {
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px Fredoka, sans-serif";
+        ctx.fillText("⭐", tr.x + (Math.sin(i) * 6), tr.y + (Math.cos(i) * 6));
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    // Ground Drop Shadow (scales naturally with distance from kick spot)
+    var shadowScale = Math.max(0.35, 1 - Math.abs(ball.y - ballStartY) / 320);
+    ctx.save();
+    ctx.fillStyle = "rgba(0, 0, 0, 0.28)";
     ctx.beginPath();
-    ctx.arc(-r * 0.1, r * 0.25, r * 0.12, 0.1, Math.PI - 0.2);
-    ctx.arc(r * 0.1, r * 0.25, r * 0.12, 0.2, Math.PI - 0.1);
+    ctx.ellipse(ball.x, Math.max(ball.y + 14, ballStartY + 14), 14 * shadowScale, 5 * shadowScale, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(ball.x, ball.y);
+
+    // Realistic ball rotation during flight and idle
+    var spinAngle = (ball.state === BALL_FLIGHT) ? (performance.now() * 0.009 + ball.x * 0.02) : (tclock * 1.5);
+    ctx.rotate(spinAngle);
+
+    var R = 15.5; // High-definition crisp football size
+
+    // 1. Sphere Base with Realistic 3D Ambient Lighting
+    var g = ctx.createRadialGradient(-R * 0.35, -R * 0.35, R * 0.1, 0, 0, R);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.65, "#f2f5f8");
+    g.addColorStop(0.9, "#d3dde8");
+    g.addColorStop(1, "#acb7c6");
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Center Black Pentagon Patch
+    var rCentral = R * 0.40;
+    var centralVertices = [];
+    ctx.beginPath();
+    for (var k = 0; k < 5; k++) {
+      var angle = k * (Math.PI * 2 / 5) - Math.PI / 2;
+      var px = Math.cos(angle) * rCentral;
+      var py = Math.sin(angle) * rCentral;
+      centralVertices.push({ x: px, y: py, angle: angle });
+      if (k === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+
+    // Dark charcoal leather gradient for central pentagon
+    var centralGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, rCentral);
+    centralGrad.addColorStop(0, "#2c313a");
+    centralGrad.addColorStop(1, "#11141a");
+    ctx.fillStyle = centralGrad;
+    ctx.fill();
+    ctx.strokeStyle = "#171a21";
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Crown / Star on Gold Bunny
-    if (isGold) {
-      ctx.fillStyle = "#fff0f6";
-      ctx.font = (r * 0.85) + "px Fredoka, sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText("👑", 0, -r * 0.85);
+    // 3. Surrounding 5 Black Pentagons & Leather Seam Lines
+    ctx.strokeStyle = "rgba(25, 30, 40, 0.85)";
+    ctx.lineWidth = 1.3;
+
+    for (var j = 0; j < 5; j++) {
+      var v1 = centralVertices[j];
+      var v2 = centralVertices[(j + 1) % 5];
+
+      // Draw seam line connecting central pentagon corner outward
+      var outerDist = R * 0.96;
+      var seamX = Math.cos(v1.angle) * outerDist;
+      var seamY = Math.sin(v1.angle) * outerDist;
+
+      ctx.beginPath();
+      ctx.moveTo(v1.x, v1.y);
+      ctx.lineTo(seamX, seamY);
+      ctx.stroke();
+
+      // Outer pentagon patch center angle
+      var midAngle = v1.angle + Math.PI / 5;
+      var pCenterDist = R * 0.78;
+      var pcX = Math.cos(midAngle) * pCenterDist;
+      var pcY = Math.sin(midAngle) * pCenterDist;
+
+      // Draw foreshortened outer black pentagon
+      ctx.beginPath();
+      for (var p = 0; p < 5; p++) {
+        var pa = p * (Math.PI * 2 / 5) + midAngle;
+        var pr = R * 0.23;
+        var pX = pcX + Math.cos(pa) * pr * 0.65;
+        var pY = pcY + Math.sin(pa) * pr * 0.65;
+        if (p === 0) ctx.moveTo(pX, pY);
+        else ctx.lineTo(pX, pY);
+      }
+      ctx.closePath();
+
+      var outerPatchGrad = ctx.createRadialGradient(pcX, pcY, 0, pcX, pcY, R * 0.25);
+      outerPatchGrad.addColorStop(0, "#282c35");
+      outerPatchGrad.addColorStop(1, "#12151b");
+      ctx.fillStyle = outerPatchGrad;
+      ctx.fill();
+      ctx.stroke();
     }
+
+    // Outer edge seam circle
+    ctx.beginPath();
+    ctx.arc(0, 0, R - 0.5, 0, Math.PI * 2);
+    ctx.strokeStyle = "rgba(18, 22, 30, 0.9)";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // 4. 3D Spherical Edge Shadow Overlay
+    var innerShadow = ctx.createRadialGradient(0, 0, R * 0.65, 0, 0, R);
+    innerShadow.addColorStop(0, "rgba(0,0,0,0)");
+    innerShadow.addColorStop(0.75, "rgba(15,25,40,0.06)");
+    innerShadow.addColorStop(1, "rgba(15,25,40,0.32)");
+    ctx.fillStyle = innerShadow;
+    ctx.beginPath();
+    ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 5. Specular Gloss Arc & Highlight
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.70)";
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(-R * 0.15, -R * 0.15, R * 0.72, Math.PI * 1.05, Math.PI * 1.55);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+    ctx.beginPath();
+    ctx.arc(-R * 0.45, -R * 0.45, R * 0.16, 0, Math.PI * 2);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -948,48 +1331,29 @@
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Fullscreen Grass Meadow Background Gradient
-    var bgGrad = ctx.createLinearGradient(0, 0, 0, vh);
-    bgGrad.addColorStop(0, "#91d5ff");
-    bgGrad.addColorStop(0.22, "#bae7ff");
-    bgGrad.addColorStop(0.25, "#73d13d");
-    bgGrad.addColorStop(1, "#278003");
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, vw, vh);
-
     ctx.setTransform(
       scale, 0, 0, scale,
       offX + (Math.random() - 0.5) * shake * 12 * scale,
       offY + (Math.random() - 0.5) * shake * 12 * scale
     );
 
-    // Decorative Playground Lawn Mat
-    ctx.fillStyle = "#432b16";
-    roundRectPath(W * 0.03, gridTop - 30, W * 0.94, (gridBot - gridTop) + 60, 28);
-    ctx.fill();
+    drawStadiumBackground();
+    drawGoal();
+    drawHumanKicker();
+    drawBall();
 
-    ctx.fillStyle = "#5c3c1e";
-    roundRectPath(W * 0.04, gridTop - 24, W * 0.92, (gridBot - gridTop) + 48, 24);
-    ctx.fill();
-
-    // Render holes and creatures
-    for (var i = 0; i < holes.length; i++) drawHole(holes[i]);
-    for (var j = 0; j < holes.length; j++) drawCreature(holes[j]);
-
-    // Render sparkles & particles
+    // Render particles
     for (var p = 0; p < particles.length; p++) {
       var pt = particles[p];
       ctx.globalAlpha = Math.max(0, pt.life);
       ctx.fillStyle = pt.color;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, pt.r * pt.life, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.r * pt.life, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
 
-    // Render Floating Score Popups
+    // Render floating popups (Strictly floating UPWARDS above goal post!)
     ctx.textAlign = "center";
-    ctx.font = "700 22px Fredoka, sans-serif";
+    ctx.font = "900 20px Fredoka, sans-serif";
     for (var u = 0; u < popups.length; u++) {
       ctx.globalAlpha = Math.max(0, popups[u].life);
       ctx.fillStyle = popups[u].color;
@@ -997,37 +1361,66 @@
     }
     ctx.globalAlpha = 1;
 
-    // Screen Flash on Hit Penalty
-    if (flashRed > 0) {
-      ctx.fillStyle = "rgba(255,77,79," + (flashRed * 0.35) + ")";
-      ctx.fillRect(0, 0, W, H);
+    /* --------------------------------------------------------------------------
+       CRITICAL NOTIFICATION REQUIREMENT:
+       All point notifications & game feedback MUST be displayed STRICTLY ABOVE
+       the goal post crossbar (goalY - 32) and NEVER overlay the goal post!
+       -------------------------------------------------------------------------- */
+    if (state === STATE_PLAY) {
+      if (ball.state === BALL_RESULT && resultTimer > 0) {
+        var a = Math.min(1, resultTimer * 3);
+        var notifY = goalY - 55; // STRICTLY ABOVE GOAL CROSSBAR (goalY - 32)
+        
+        ctx.save();
+        ctx.globalAlpha = a;
+
+        // Stylish Arcade Notification Badge Pill
+        var badgeW = 210;
+        var badgeH = 42;
+        var isGoal = resultText.indexOf("GOAL") >= 0 || resultText.indexOf("SCREAMER") >= 0;
+        
+        ctx.fillStyle = isGoal ? "rgba(16, 50, 24, 0.94)" : "rgba(60, 16, 16, 0.94)";
+        ctx.strokeStyle = isGoal ? "#ffeb3b" : "#ff7a45";
+        ctx.lineWidth = 3;
+
+        drawRoundRect(ctx, W / 2 - badgeW / 2, notifY - badgeH / 2, badgeW, badgeH, 21);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = "900 22px Fredoka, sans-serif";
+        ctx.fillStyle = isGoal ? "#ffeb3b" : "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(resultText, W / 2, notifY);
+        ctx.restore();
+      }
+
+      if (tierFlash > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, tierFlash * 2.0);
+        ctx.font = "900 24px Fredoka, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(TIERS[tier].name, W / 2, goalY - 75); // STRICTLY ABOVE GOAL POST
+        ctx.restore();
+      }
+
+      if (ball.state === BALL_READY) {
+        ctx.globalAlpha = 0.75 + Math.sin(tclock * 3) * 0.15;
+        ctx.font = "600 15px Fredoka, sans-serif";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText("👆 swipe up to kick!", W / 2, ballStartY + 46);
+        ctx.globalAlpha = 1;
+      }
     }
 
-    // Level Announcement Banner
-    if (tierFlash > 0) {
-      ctx.globalAlpha = Math.min(1, tierFlash * 1.8);
-      ctx.font = "700 30px Fredoka, sans-serif";
-      ctx.fillStyle = "#ffffff";
-      ctx.strokeStyle = "#278003";
-      ctx.lineWidth = 5;
-      var tierName = TIERS[tier].name;
-      ctx.strokeText(tierName, W / 2, H * 0.09);
-      ctx.fillText(tierName, W / 2, H * 0.09);
-      ctx.globalAlpha = 1;
-    }
+    drawForegroundPlaygroundGrass();
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  function roundRectPath(x, y, w, h, r) {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-  }
+
 
   /* --------------------------------------------------------------------------
      9. Main RequestAnimationFrame Loop
@@ -1041,7 +1434,7 @@
 
     if (state === STATE_PLAY) {
       stepGame(dt);
-    } else if (state === STATE_TITLE) {
+    } else {
       ambientStep(dt);
     }
 
@@ -1057,10 +1450,11 @@
     resetGame();
     state = STATE_PLAY;
 
-    titleScreen.classList.add("hidden");
-    gameOverScreen.classList.add("hidden");
-    pauseScreen.classList.add("hidden");
-    hudEl.classList.remove("hidden");
+    if (titleScreen) titleScreen.classList.add("hidden");
+    if (helpModal) helpModal.classList.add("hidden");
+    if (gameOverScreen) gameOverScreen.classList.add("hidden");
+    if (pauseScreen) pauseScreen.classList.add("hidden");
+    if (hudEl) hudEl.classList.remove("hidden");
     lastTs = 0;
   }
 
@@ -1068,59 +1462,92 @@
     state = STATE_OVER;
     stopBgm();
 
-    if (score > bestScore) {
-      bestScore = score;
+    if (score > best) {
+      best = score;
       try {
-        localStorage.setItem("whack_best_score", String(bestScore));
-      } catch (e) { }
-      bestScoreText.textContent = bestScore + " (NEW RECORD!) 🎉";
+        localStorage.setItem("goalkick_best", String(best));
+      } catch (e) {}
+      if (bestScoreText) bestScoreText.textContent = best + " (NEW RECORD!) 🎉";
     } else {
-      bestScoreText.textContent = String(bestScore);
+      if (bestScoreText) bestScoreText.textContent = String(best);
     }
 
-    var lines = ["Awesome Job! 🎉", "Super Effort! 🌟", "So Close! 👍", "Great Run! ⭐"];
-    overTitle.textContent = lines[(Math.random() * lines.length) | 0];
-    overReasonText.textContent = gameOverReason;
-    finalScoreText.textContent = score;
-    whackedText.textContent = whacked + " Whacked";
-    bestStreakText.textContent = "Streak " + bestStreak;
+    var lines = ["Full Time! 🎉", "Great Effort! 🌟", "Final Whistle! ⚽", "Bench Time! 👍"];
+    if (overTitle) overTitle.textContent = lines[(Math.random() * lines.length) | 0];
+    if (overReasonText) overReasonText.textContent = "Out of lives!";
+    if (finalScoreText) finalScoreText.textContent = score;
+    if (goalsText) goalsText.textContent = goals + " Goals";
+    if (bestStreakText) bestStreakText.textContent = "Best Streak " + bestStreak;
 
-    hudEl.classList.add("hidden");
-    gameOverScreen.classList.remove("hidden");
+    if (hudEl) hudEl.classList.add("hidden");
+    if (gameOverScreen) gameOverScreen.classList.remove("hidden");
   }
 
   function pauseGame() {
     if (state !== STATE_PLAY) return;
     state = STATE_PAUSED;
     stopBgm();
-    pauseScreen.classList.remove("hidden");
+    if (pauseScreen) pauseScreen.classList.remove("hidden");
   }
 
   function resumeGame() {
     if (state !== STATE_PAUSED) return;
     state = STATE_PLAY;
     startBgm();
-    pauseScreen.classList.add("hidden");
+    if (pauseScreen) pauseScreen.classList.add("hidden");
     lastTs = 0;
   }
 
-  startBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    startGame();
-  });
+  if (startBtn) {
+    startBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      startGame();
+    });
+  }
 
-  againBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    startGame();
-  });
+  if (againBtn) {
+    againBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      startGame();
+    });
+  }
 
-  resumeBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    resumeGame();
-  });
+  if (resumeBtn) {
+    resumeBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resumeGame();
+    });
+  }
 
-  function getCanvasCoords(e) {
-    var rect = canvas.getBoundingClientRect();
+  if (helpBtn) {
+    helpBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      initAudio();
+      if (helpModal) helpModal.classList.remove("hidden");
+    });
+  }
+
+  if (closeHelpBtn) {
+    closeHelpBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (helpModal) helpModal.classList.add("hidden");
+    });
+  }
+
+  if (helpModal) {
+    helpModal.addEventListener("click", function (e) {
+      if (e.target === helpModal) {
+        helpModal.classList.add("hidden");
+      }
+    });
+  }
+
+
+  /* --------------------------------------------------------------------------
+     11. Touch & Pointer Swipe Handling
+     -------------------------------------------------------------------------- */
+  function toWorld(e) {
+    var r = canvas.getBoundingClientRect();
     var clientX = e.clientX;
     var clientY = e.clientY;
 
@@ -1129,50 +1556,35 @@
       clientY = e.touches[0].clientY;
     }
 
-    var cssX = clientX - rect.left;
-    var cssY = clientY - rect.top;
-
     return {
-      x: (((cssX * dpr) - offX) / scale),
-      y: (((cssY * dpr) - offY) / scale)
+      x: (((clientX - r.left) * dpr) - offX) / scale,
+      y: (((clientY - r.top) * dpr) - offY) / scale
     };
   }
 
-  if (window.PointerEvent) {
-    canvas.addEventListener("pointerdown", function (e) {
-      if (state !== STATE_PLAY) {
-        initAudio();
-        return;
-      }
-      var coords = getCanvasCoords(e);
-      tapAt(coords.x, coords.y);
-      if (e.cancelable) e.preventDefault();
-    }, { passive: false });
-  } else {
-    canvas.addEventListener("touchstart", function (e) {
-      if (state !== STATE_PLAY) {
-        initAudio();
-        return;
-      }
-      if (e.changedTouches) {
-        for (var i = 0; i < e.changedTouches.length; i++) {
-          var coords = getCanvasCoords(e.changedTouches[i]);
-          tapAt(coords.x, coords.y);
-        }
-      }
-      if (e.cancelable) e.preventDefault();
-    }, { passive: false });
+  canvas.addEventListener("pointerdown", function (e) {
+    if (state !== STATE_PLAY) {
+      initAudio();
+      return;
+    }
+    var w = toWorld(e);
+    beginSwipe(w.x, w.y);
+    if (canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    e.preventDefault();
+  });
 
-    canvas.addEventListener("mousedown", function (e) {
-      if (state !== STATE_PLAY) {
-        initAudio();
-        return;
-      }
-      var coords = getCanvasCoords(e);
-      tapAt(coords.x, coords.y);
-      if (e.cancelable) e.preventDefault();
-    });
-  }
+  canvas.addEventListener("pointerup", function (e) {
+    if (state !== STATE_PLAY) return;
+    var w = toWorld(e);
+    endSwipe(w.x, w.y);
+    e.preventDefault();
+  });
+
+  canvas.addEventListener("pointercancel", function () {
+    swipeStart = null;
+  });
 
   window.addEventListener("keydown", function (e) {
     if ((e.key === " " || e.key === "Enter") && state !== STATE_PLAY && state !== STATE_PAUSED) {
@@ -1184,7 +1596,7 @@
   });
 
   /* --------------------------------------------------------------------------
-     11. Auto-Pause on Window Blur / Tab Close / Visibility Change
+     12. Auto-Pause & Audio Resume on Window Blur / Tab Close / Visibility Change
      -------------------------------------------------------------------------- */
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
@@ -1192,12 +1604,17 @@
         pauseGame();
       }
     } else {
-      if (actx && actx.state === "suspended") {
-        actx.resume().catch(function () { });
-      }
-      if (state === STATE_PLAY && !isBgmPlaying) {
+      if (state === STATE_PLAY) {
+        initAudio();
         startBgm();
       }
+    }
+  });
+
+  window.addEventListener("pageshow", function () {
+    if (!document.hidden && state === STATE_PLAY) {
+      initAudio();
+      startBgm();
     }
   });
 
@@ -1217,11 +1634,13 @@
     e.preventDefault();
   });
 
+
   /* --------------------------------------------------------------------------
-     12. Engine Boot
+     13. Engine Boot (Immediate Direct Entry to Playfield)
      -------------------------------------------------------------------------- */
   resize();
-  resetGame();
+  startGame();
   requestAnimationFrame(gameLoop);
 
 })();
+
